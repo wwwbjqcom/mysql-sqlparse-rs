@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::dialect::Dialect;
+use crate::dialect::{Dialect, DBType};
 
 #[derive(Debug, Default)]
 pub struct GenericDialect;
@@ -28,5 +28,9 @@ impl Dialect for GenericDialect {
             || ch == '$'
             || ch == '#'
             || ch == '_'
+    }
+
+    fn check_db_type(&self) -> DBType {
+        DBType::Generic
     }
 }

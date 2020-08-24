@@ -25,6 +25,14 @@ pub use self::mssql::MsSqlDialect;
 pub use self::mysql::MySqlDialect;
 pub use self::postgresql::PostgreSqlDialect;
 
+#[derive(Clone)]
+pub enum DBType{
+    Generic,
+    MsSql,
+    MySql,
+    PostgreSql
+}
+
 pub trait Dialect: Debug {
     /// Determine if a character starts a quoted identifier. The default
     /// implementation, accepting "double quoted" ids is both ANSI-compliant
@@ -38,4 +46,6 @@ pub trait Dialect: Debug {
     fn is_identifier_start(&self, ch: char) -> bool;
     /// Determine if a character is a valid unquoted identifier character
     fn is_identifier_part(&self, ch: char) -> bool;
+
+    fn check_db_type(&self) -> DBType;
 }

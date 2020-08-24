@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::dialect::Dialect;
+use crate::dialect::{Dialect, DBType};
 
 #[derive(Debug)]
 pub struct MySqlDialect {}
@@ -29,5 +29,9 @@ impl Dialect for MySqlDialect {
 
     fn is_identifier_part(&self, ch: char) -> bool {
         self.is_identifier_start(ch) || (ch >= '0' && ch <= '9')
+    }
+
+    fn check_db_type(&self) -> DBType {
+        DBType::MySql
     }
 }

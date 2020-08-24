@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::dialect::Dialect;
+use crate::dialect::{Dialect, DBType};
 
 #[derive(Debug)]
 pub struct PostgreSqlDialect {}
@@ -29,5 +29,9 @@ impl Dialect for PostgreSqlDialect {
             || (ch >= '0' && ch <= '9')
             || ch == '$'
             || ch == '_'
+    }
+
+    fn check_db_type(&self) -> DBType {
+        DBType::PostgreSql
     }
 }

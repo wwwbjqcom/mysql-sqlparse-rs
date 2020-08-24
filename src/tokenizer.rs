@@ -711,7 +711,7 @@ mod tests {
         let dialect = GenericDialect {};
         let mut tokenizer = Tokenizer::new(&dialect, &sql);
         let tokens = tokenizer.tokenize().unwrap();
-        println!("tokens: {:#?}", tokens);
+
         let expected = vec![
             Token::Whitespace(Whitespace::Newline),
             Token::Char('م'),
@@ -758,7 +758,7 @@ mod tests {
         let dialect = GenericDialect {};
         let mut tokenizer = Tokenizer::new(&dialect, &sql);
         let tokens = tokenizer.tokenize().unwrap();
-        println!("tokens: {:#?}", tokens);
+
         let expected = vec![
             Token::Whitespace(Whitespace::Newline),
             Token::Whitespace(Whitespace::Newline),

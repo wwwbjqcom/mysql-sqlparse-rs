@@ -99,7 +99,7 @@ impl Parser {
     pub fn parse_sql(dialect: &dyn Dialect, sql: &str) -> Result<Vec<Statement>, ParserError> {
         let mut tokenizer = Tokenizer::new(dialect, &sql);
         let tokens = tokenizer.tokenize()?;
-        println!("{:?}", tokens);
+        // println!("Parsing sql tokens '{:?}'...", &tokens);
         let mut parser = Parser::new(tokens);
         let mut stmts = Vec::new();
         let mut expecting_statement_delimiter = false;
@@ -127,6 +127,7 @@ impl Parser {
     /// Parse a single top-level statement (such as SELECT, INSERT, CREATE, etc.),
     /// stopping before the statement separator, if any.
     pub fn parse_statement(&mut self) -> Result<Statement, ParserError> {
+        // println!("{:?}", &self.tokens);
         match self.next_token() {
             Token::Word(w) => match w.keyword {
                 Keyword::SELECT | Keyword::WITH | Keyword::VALUES => {
@@ -926,6 +927,7 @@ impl Parser {
     /// Consume the next token if it matches the expected token, otherwise return false
     #[must_use]
     pub fn consume_token(&mut self, expected: &Token) -> bool {
+        // println!("consume_token: {:?}, {:?}", self.peek_token(), &expected);
         if self.peek_token() == *expected {
             self.next_token();
             true
@@ -1733,17 +1735,17 @@ impl Parser {
             vec![]
         };
 
-        let limit = if self.parse_keyword(Keyword::LIMIT) {
-            self.parse_limit()?
+        let (limit, offset) = if self.parse_keyword(Keyword::LIMIT) {
+            self.parse_mysql_limit()?
         } else {
-            None
+            (None,None)
         };
 
-        let offset = if self.parse_keyword(Keyword::OFFSET) {
-            Some(self.parse_offset()?)
-        } else {
-            None
-        };
+        // let offset = if self.parse_keyword(Keyword::OFFSET) {
+        //     Some(self.parse_offset()?)
+        // } else {
+        //     None
+        // };
 
         let fetch = if self.parse_keyword(Keyword::FETCH) {
             Some(self.parse_fetch()?)
@@ -1893,24 +1895,34 @@ impl Parser {
         let modifier = self.parse_one_of_keywords(&[Keyword::SESSION, Keyword::LOCAL]);
         let variable = self.parse_identifier()?;
         if self.consume_token(&Token::Eq) || self.parse_keyword(Keyword::TO) {
-            let token = self.peek_token();
-            let value = match (self.parse_value(), token) {
-                (Ok(value), _) => SetVariableValue::Literal(value),
-                (Err(_), Token::Word(ident)) => SetVariableValue::Ident(ident.to_ident()),
-                (Err(_), unexpected) => self.expected("variable value", unexpected)?,
-            };
             Ok(Statement::SetVariable {
                 local: modifier == Some(Keyword::LOCAL),
                 variable,
-                value,
+                value: self.parse_set_variables_value()?,
             })
         } else if variable.value == "TRANSACTION" && modifier.is_none() {
             Ok(Statement::SetTransaction {
                 modes: self.parse_transaction_modes()?,
             })
+        } else if variable.value.to_lowercase() == "names" && modifier.is_none() {
+            Ok(Statement::SetVariable {
+                local: modifier == Some(Keyword::LOCAL),
+                variable,
+                value: self.parse_set_variables_value()?,
+            })
         } else {
             self.expected("equals sign or TO", self.peek_token())
         }
+    }
+
+    fn parse_set_variables_value(&mut self) -> Result<SetVariableValue, ParserError>{
+        let token = self.peek_token();
+        let value = match (self.parse_value(), token) {
+            (Ok(value), _) => SetVariableValue::Literal(value),
+            (Err(_), Token::Word(ident)) => SetVariableValue::Ident(ident.to_ident()),
+            (Err(_), unexpected) => self.expected("variable value", unexpected)?,
+        };
+        Ok(value)
     }
 
     pub fn parse_show(&mut self) -> Result<Statement, ParserError> {
@@ -2253,6 +2265,23 @@ impl Parser {
             percent,
             quantity,
         })
+    }
+
+    pub fn parse_mysql_limit(&mut self) -> Result<(Option<Expr>, Option<Offset>), ParserError> {
+        if self.parse_keyword(Keyword::ALL) {
+            Ok((None, None))
+        } else {
+            let limit_value = Some(Expr::Value(self.parse_number_value()?));
+            if self.parse_keyword(Keyword::OFFSET){
+                Ok((limit_value,Some(self.parse_offset()?)))
+            }else if self.peek_token() == Token::Comma {
+                self.next_token();
+                Ok((limit_value,Some(self.parse_offset()?)))
+            }
+            else {
+                Ok((limit_value, None))
+            }
+        }
     }
 
     /// Parse a LIMIT clause

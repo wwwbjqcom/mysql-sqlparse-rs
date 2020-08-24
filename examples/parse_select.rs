@@ -12,16 +12,13 @@
 
 #![warn(clippy::all)]
 
-use sqlparser::dialect::GenericDialect;
+use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "SELECT a, b, 123, myfunc(b) \
-               FROM table_1 \
-               WHERE a > b AND b < 100 \
-               ORDER BY a DESC, b";
+    let sql = "select * from t1 limit 1 offset 10";
 
-    let dialect = GenericDialect {};
+    let dialect = MySqlDialect {};
 
     let ast = Parser::parse_sql(&dialect, sql).unwrap();
 
