@@ -151,6 +151,8 @@ impl Parser {
                 Keyword::COMMIT => Ok(self.parse_commit()?),
                 Keyword::ROLLBACK => Ok(self.parse_rollback()?),
                 Keyword::ASSERT => Ok(self.parse_assert()?),
+                Keyword::LOCK => Ok(Statement::Query(Box::new(self.parse_lock()?))),
+                Keyword::UNLOCK => Ok(Statement::Query(Box::new(self.parse_unlock()?))),
                 _ => self.expected("an SQL statement", Token::Word(w)),
             },
             Token::LParen => {
@@ -159,6 +161,89 @@ impl Parser {
             }
             unexpected => self.expected("an SQL statement", unexpected),
         }
+    }
+
+    pub fn parse_unlock(&mut self) -> Result<Query, ParserError>{
+        if self.parse_keyword(Keyword::TABLES) && self.consume_token(&Token::EOF){
+            return Ok(Query{
+                ctes: vec![],
+                body: SetExpr::LockOperation(Box::new(SetLockInfo::UNLock)),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+                fetch: None
+            });
+        }
+        return self.expected(
+            "UNLOCK Wrong syntax",
+            self.peek_token(),
+        );
+
+    }
+
+    pub fn parse_lock(&mut self) -> Result<Query, ParserError>{
+        let body = self.parse_query_lock_body()?;
+        Ok(Query {
+            ctes:vec![],
+            body,
+            limit:None,
+            order_by:vec![],
+            offset:None,
+            fetch:None,
+        })
+    }
+
+    pub fn parse_query_lock_body(&mut self) -> Result<SetExpr, ParserError> {
+        return Ok(SetExpr::LockOperation(Box::new(self.parse_lock_tables_info()?)));
+    }
+
+    pub fn parse_lock_tables_info(&mut self) -> Result<SetLockInfo, ParserError>{
+        if self.parse_keyword(Keyword::TABLES) {
+            let mut lock_list = vec![];
+            loop{
+                lock_list.push(self.parse_lock_tables_relation()?);
+                if !self.consume_token(&Token::Comma){
+                    break
+                }
+            }
+            Ok(SetLockInfo::Lock(Box::new(lock_list)))
+        }else {
+            return self.expected(
+                "LOCK Wrong syntax",
+                self.peek_token(),
+            );
+        }
+    }
+
+    pub fn parse_lock_tables_relation(&mut self) -> Result<LockInfo, ParserError> {
+        let name = self.parse_object_name()?;
+        let relation =
+            TableFactor::Table{
+                name,
+                alias: None,
+                args: vec![],
+                with_hints: vec![]
+            };
+        let lock_type = self.parse_lock_type()?;
+        return Ok(LockInfo{ relation, lock: lock_type });
+    }
+
+    /// 解析获取lock类型
+    pub fn parse_lock_type(&mut self) -> Result<LOCKType, ParserError> {
+        match self.peek_token(){
+            Token::Word(f) => {
+                if self.parse_keyword(Keyword::READ){
+                    return Ok(LOCKType::Read);
+                }else if self.parse_keyword(Keyword::WRITE){
+                    return Ok(LOCKType::Write);
+                }
+            }
+            _ => {}
+        }
+        return self.expected(
+            "LOCK tables type only support read and write",
+            self.peek_token(),
+        );
     }
 
     /// Parse a new expression

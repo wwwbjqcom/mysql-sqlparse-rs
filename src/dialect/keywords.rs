@@ -255,6 +255,7 @@ define_keywords!(
     LOCALTIMESTAMP,
     LOCATION,
     LOWER,
+    LOCK,
     MATCH,
     MATERIALIZED,
     MAX,
@@ -395,6 +396,7 @@ define_keywords!(
     SYSTEM_TIME,
     SYSTEM_USER,
     TABLE,
+    TABLES,
     TABLESAMPLE,
     TEXT,
     TEXTFILE,
@@ -423,6 +425,7 @@ define_keywords!(
     UNION,
     UNIQUE,
     UNKNOWN,
+    UNLOCK,
     UNNEST,
     UPDATE,
     UPPER,
@@ -459,6 +462,8 @@ define_keywords!(
 pub const RESERVED_FOR_TABLE_ALIAS: &[Keyword] = &[
     // Reserved as both a table and a column alias:
     Keyword::WITH,
+    Keyword::LOCK,
+    Keyword::UNLOCK,
     Keyword::SELECT,
     Keyword::WHERE,
     Keyword::GROUP,
@@ -490,6 +495,8 @@ pub const RESERVED_FOR_TABLE_ALIAS: &[Keyword] = &[
 pub const RESERVED_FOR_COLUMN_ALIAS: &[Keyword] = &[
     // Reserved as both a table and a column alias:
     Keyword::WITH,
+    Keyword::LOCK,
+    Keyword::UNLOCK,
     Keyword::SELECT,
     Keyword::WHERE,
     Keyword::GROUP,
@@ -505,3 +512,13 @@ pub const RESERVED_FOR_COLUMN_ALIAS: &[Keyword] = &[
     // Reserved only as a column alias in the `SELECT` clause
     Keyword::FROM,
 ];
+
+mod tests {
+    use crate::dialect::keywords::ALL_KEYWORDS;
+    #[test]
+    fn keywords_find() {
+        let a= String::from("UNLOCK");
+        let b = ALL_KEYWORDS.binary_search(&&*a);
+        println!("{:?}",&b);
+    }
+}

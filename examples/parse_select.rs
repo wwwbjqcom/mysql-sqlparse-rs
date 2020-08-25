@@ -16,8 +16,16 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "select * from t1 limit 1 offset 10";
+    let sql = "lock tables a read , b read";
+    //let sql = "";
+    let dialect = MySqlDialect {};
 
+    let ast = Parser::parse_sql(&dialect, sql).unwrap();
+
+    println!("AST: {:?}", ast);
+
+    let sql = "unlock tables";
+    //let sql = "";
     let dialect = MySqlDialect {};
 
     let ast = Parser::parse_sql(&dialect, sql).unwrap();

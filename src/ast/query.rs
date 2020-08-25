@@ -55,6 +55,30 @@ impl fmt::Display for Query {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum LOCKType{
+    Read,
+    Write
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct LockInfo{
+    pub relation: TableFactor,
+    pub lock: LOCKType
+}
+
+/// 记录lock tables/ unlock tables 语法树
+///
+/// unlock 只有 tables 后缀，所以unlock没有任何东西
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum SetLockInfo {
+    Lock(Box<Vec<LockInfo>>),
+    UNLock
+}
+
 /// A node in a tree, representing a "query body" expression, roughly:
 /// `SELECT ... [ {UNION|EXCEPT|INTERSECT} SELECT ...]`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -62,6 +86,8 @@ impl fmt::Display for Query {
 pub enum SetExpr {
     /// Restricted SELECT .. FROM .. HAVING (no ORDER BY or set operations)
     Select(Box<Select>),
+    /// LOCK Tables、 UNLOCK Tables
+    LockOperation(Box<SetLockInfo>),
     /// Parenthesized SELECT subquery, which may include more set operations
     /// in its body and an optional ORDER BY / LIMIT.
     Query(Box<Query>),
@@ -91,6 +117,7 @@ impl fmt::Display for SetExpr {
                 let all_str = if *all { " ALL" } else { "" };
                 write!(f, "{} {}{} {}", left, op, all_str, right)
             }
+            SetExpr::LockOperation(l) => write!(f, "{:?}", l),
         }
     }
 }
