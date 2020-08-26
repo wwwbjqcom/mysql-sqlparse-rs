@@ -3,7 +3,7 @@
 More sqlparse-rs to extend mysql partial syntax.   
 the extended syntax is as follows
 
- 1. variable name starting with @ sign. for example, select @@version
+ 1. variable name starting with @ sign. for example, select @version
  2. mysql limit syntax, such as select * from t1 limit 1,2
  3. support mysql call syntax
  4. lock tables and unlock tables
