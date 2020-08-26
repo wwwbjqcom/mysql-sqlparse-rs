@@ -429,6 +429,7 @@ define_keywords!(
     UNNEST,
     UPDATE,
     UPPER,
+    USE,
     USER,
     USING,
     UUID,

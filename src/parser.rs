@@ -154,6 +154,7 @@ impl Parser {
                 Keyword::ASSERT => Ok(self.parse_assert()?),
                 Keyword::LOCK => Ok(self.parse_lock()?),
                 Keyword::UNLOCK => Ok(self.parse_unlock()?),
+                Keyword::USE => Ok(self.parse_use()?),
                 _ => self.expected("an SQL statement", Token::Word(w)),
             },
             Token::LParen => {
@@ -162,6 +163,17 @@ impl Parser {
             }
             unexpected => self.expected("an SQL statement", unexpected),
         }
+    }
+
+    pub fn parse_use(&mut self) -> Result<Statement, ParserError> {
+        let database_name = self.parse_identifier()?;
+        if self.consume_token(&Token::EOF){
+            return Ok(Statement::Use {database: database_name.to_string()});
+        }
+        return self.expected(
+            "Use Wrong syntax",
+            self.peek_token(),
+        );
     }
 
     pub fn parse_call(&mut self) -> Result<Statement, ParserError>{

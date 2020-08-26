@@ -569,6 +569,10 @@ pub enum Statement {
     Call {
         name: Ident,
         parameter: Option<Vec<Expr>>
+    },
+    /// USE DATABASE
+    Use {
+        database: String
     }
 }
 
@@ -847,6 +851,9 @@ impl fmt::Display for Statement {
                 write!(f, "Call{}", name);
                 write!(f, "parameter{:?}", parameter);
                 Ok(())
+            }
+            Statement::Use { database } => {
+                write!(f, "USE DATABASE{}", database)
             }
         }
     }

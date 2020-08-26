@@ -340,6 +340,10 @@ impl<'a> Tokenizer<'a> {
                     Ok(Some(Token::VariableString(a)))
                     // Ok(Some(Token::make_word(&a, None)))
                 }
+                '`' => {
+                    let a = self.tokenizer_backticks_string(chars)?;
+                    Ok(Some(Token::make_word(&a, Some('`'))))
+                }
 
                 // string
                 '\'' => {
@@ -471,6 +475,34 @@ impl<'a> Tokenizer<'a> {
             col: self.col,
             line: self.line,
         })
+    }
+
+    /// 读去反引号包含的内容
+    fn tokenizer_backticks_string(&self, chars: &mut Peekable<Chars<'_>>,) -> Result<String, TokenizerError>{
+        let mut st = String::from("");
+        chars.next(); // consume the first char
+        'a: loop{
+            match chars.peek() {
+                Some(&ch) => match ch {
+                    '`' => {
+                        chars.next();
+                        break 'a;
+                    }
+                    ch if self.dialect.is_identifier_start(ch) => {
+                        chars.next(); // consume the first char
+                        st = self.tokenize_word(ch, chars);
+                        continue 'a;
+                    }
+                    _ => {
+                        return self.tokenizer_error("parser sql error");
+                    }
+                }
+                None => {
+                    return self.tokenizer_error("parser sql error");
+                }
+            }
+        }
+        return Ok(st);
     }
 
     fn tokenizer_var(&self, chars: &mut Peekable<Chars<'_>>,) -> Result<String, TokenizerError>{
