@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "call a(@a , 1 , 'b')";
+    let sql = "set @a=1";
     //let sql = "";
     let dialect = MySqlDialect {};
 

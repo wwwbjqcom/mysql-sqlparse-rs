@@ -1757,6 +1757,7 @@ impl Parser {
     pub fn parse_identifier(&mut self) -> Result<Ident, ParserError> {
         match self.next_token() {
             Token::Word(w) => Ok(w.to_ident()),
+            Token::VariableString(v) => Ok(Ident{ value: v, quote_style: None }),
             unexpected => self.expected("identifier", unexpected),
         }
     }
