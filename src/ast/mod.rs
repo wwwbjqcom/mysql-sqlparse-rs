@@ -564,6 +564,12 @@ pub enum Statement {
     },
 
     UNLock { chain: bool },
+
+    /// call statement
+    Call {
+        name: Ident,
+        parameter: Option<Vec<Expr>>
+    }
 }
 
 impl fmt::Display for Statement {
@@ -836,6 +842,11 @@ impl fmt::Display for Statement {
             }
             Statement::Lock { lock_tables } => {
                 write!(f, "LOCK{:?}", lock_tables)
+            }
+            Statement::Call { name, parameter } => {
+                write!(f, "Call{}", name);
+                write!(f, "parameter{:?}", parameter);
+                Ok(())
             }
         }
     }

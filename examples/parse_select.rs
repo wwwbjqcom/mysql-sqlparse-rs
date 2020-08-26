@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "lock tables t1 read";
+    let sql = "call a(@a , 1 , 'b')";
     //let sql = "";
     let dialect = MySqlDialect {};
 

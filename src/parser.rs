@@ -134,6 +134,7 @@ impl Parser {
                     self.prev_token();
                     Ok(Statement::Query(Box::new(self.parse_query()?)))
                 }
+                Keyword::CALL => Ok(self.parse_call()?),
                 Keyword::CREATE => Ok(self.parse_create()?),
                 Keyword::DROP => Ok(self.parse_drop()?),
                 Keyword::DELETE => Ok(self.parse_delete()?),
@@ -161,6 +162,47 @@ impl Parser {
             }
             unexpected => self.expected("an SQL statement", unexpected),
         }
+    }
+
+    pub fn parse_call(&mut self) -> Result<Statement, ParserError>{
+        let fun_name = self.parse_identifier()?;
+        return if self.consume_token(&Token::EOF) {
+            Ok(Statement::Call { name: fun_name, parameter: None })
+        } else {
+            Ok(Statement::Call { name: fun_name, parameter: Some(self.parse_call_parameter()?) })
+        }
+
+    }
+
+    pub fn parse_call_parameter(&mut self) -> Result<Vec<Expr>, ParserError> {
+        let mut ident_list = vec![];
+        let mut r_paren =  false;
+        if self.consume_token(&Token::LParen){
+            loop {
+                if self.consume_token(&Token::RParen){
+                    r_paren = true;
+                    continue;
+                }
+
+                if r_paren && self.consume_token(&Token::EOF){
+                    break;
+                }else if r_paren {
+                    return self.expected(
+                        "Call Wrong syntax",
+                        self.peek_token(),
+                    );
+                }
+
+                ident_list = self.parse_comma_separated(Parser::parse_expr)?;
+
+            }
+        }else {
+            return self.expected(
+                "Call Wrong syntax",
+                self.peek_token(),
+            );
+        }
+        return Ok(ident_list)
     }
 
     pub fn parse_unlock(&mut self) -> Result<Statement, ParserError>{
@@ -205,7 +247,7 @@ impl Parser {
     /// 解析获取lock类型
     pub fn parse_lock_type(&mut self) -> Result<LOCKType, ParserError> {
         match self.peek_token(){
-            Token::Word(f) => {
+            Token::Word(_f) => {
                 if self.parse_keyword(Keyword::READ){
                     return Ok(LOCKType::Read);
                 }else if self.parse_keyword(Keyword::WRITE){
@@ -350,10 +392,12 @@ impl Parser {
             Token::Number(_)
             | Token::SingleQuotedString(_)
             | Token::NationalStringLiteral(_)
-            | Token::HexStringLiteral(_) => {
+            | Token::HexStringLiteral(_)
+            | Token::VariableString(_) => {
                 self.prev_token();
                 Ok(Expr::Value(self.parse_value()?))
             }
+
             Token::LParen => {
                 let expr =
                     if self.parse_keyword(Keyword::SELECT) || self.parse_keyword(Keyword::WITH) {
@@ -1539,6 +1583,7 @@ impl Parser {
             Token::SingleQuotedString(ref s) => Ok(Value::SingleQuotedString(s.to_string())),
             Token::NationalStringLiteral(ref s) => Ok(Value::NationalStringLiteral(s.to_string())),
             Token::HexStringLiteral(ref s) => Ok(Value::HexStringLiteral(s.to_string())),
+            Token::VariableString(ref v) => Ok(Value::VariableName(v.to_string())),
             unexpected => self.expected("a value", unexpected),
         }
     }
@@ -1785,7 +1830,6 @@ impl Parser {
         } else {
             vec![]
         };
-
         let body = self.parse_query_body(0)?;
 
         let order_by = if self.parse_keywords(&[Keyword::ORDER, Keyword::BY]) {
@@ -1861,7 +1905,6 @@ impl Parser {
                 self.peek_token(),
             );
         };
-
         loop {
             // The query can be optionally followed by a set operator:
             let op = self.parse_set_operator(&self.peek_token());
@@ -1908,8 +1951,9 @@ impl Parser {
             None
         };
 
+        // println!("123");
         let projection = self.parse_comma_separated(Parser::parse_select_item)?;
-
+        // println!("aaa");
         // Note that for keywords to be properly handled here, they need to be
         // added to `RESERVED_FOR_COLUMN_ALIAS` / `RESERVED_FOR_TABLE_ALIAS`,
         // otherwise they may be parsed as an alias as part of the `projection`
@@ -1976,6 +2020,7 @@ impl Parser {
 
     fn parse_set_variables_value(&mut self) -> Result<SetVariableValue, ParserError>{
         let token = self.peek_token();
+        println!("{:}", &token);
         let value = match (self.parse_value(), token) {
             (Ok(value), _) => SetVariableValue::Literal(value),
             (Err(_), Token::Word(ident)) => SetVariableValue::Ident(ident.to_ident()),
@@ -2262,7 +2307,9 @@ impl Parser {
 
     /// Parse a comma-delimited list of projections after SELECT
     pub fn parse_select_item(&mut self) -> Result<SelectItem, ParserError> {
+        // println!("111");
         let expr = self.parse_expr()?;
+        // println!("1234");
         if let Expr::Wildcard = expr {
             Ok(SelectItem::Wildcard)
         } else if let Expr::QualifiedWildcard(prefix) = expr {

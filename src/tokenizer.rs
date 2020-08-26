@@ -34,6 +34,8 @@ pub enum Token {
     Number(String),
     /// A character that could not be tokenized
     Char(char),
+    /// Environment variable name
+    VariableString(String),
     /// Single quoted string: i.e: 'string'
     SingleQuotedString(String),
     /// "National" string literal: i.e: N'string'
@@ -108,6 +110,7 @@ impl fmt::Display for Token {
             Token::SingleQuotedString(ref s) => write!(f, "'{}'", s),
             Token::NationalStringLiteral(ref s) => write!(f, "N'{}'", s),
             Token::HexStringLiteral(ref s) => write!(f, "X'{}'", s),
+            Token::VariableString(ref v) => write!(f, "{}", v),
             Token::Comma => f.write_str(","),
             Token::Whitespace(ws) => write!(f, "{}", ws),
             Token::Eq => f.write_str("="),
@@ -331,6 +334,13 @@ impl<'a> Tokenizer<'a> {
                     let s = self.tokenize_word(ch, chars);
                     Ok(Some(Token::make_word(&s, None)))
                 }
+
+                '@' => {
+                    let a = self.tokenizer_var(chars)?;
+                    Ok(Some(Token::VariableString(a)))
+                    // Ok(Some(Token::make_word(&a, None)))
+                }
+
                 // string
                 '\'' => {
                     // 读取引号包含的字符串
@@ -461,6 +471,30 @@ impl<'a> Tokenizer<'a> {
             col: self.col,
             line: self.line,
         })
+    }
+
+    fn tokenizer_var(&self, chars: &mut Peekable<Chars<'_>>,) -> Result<String, TokenizerError>{
+        let mut s = String::from("@");
+        loop{
+            chars.next(); // consume the first char
+            match chars.peek() {
+                Some(&ch) => match ch {
+                    '@' => s.push("@".parse().unwrap()),
+                    ch if self.dialect.is_identifier_start(ch) => {
+                        chars.next(); // consume the first char
+                        let st = self.tokenize_word(ch, chars);
+                        return Ok(format!("{}{}",s, st));
+                    }
+                    _ => {
+                        return self.tokenizer_error("parser select variable error");
+                    }
+                }
+                None => {
+                    return self.tokenizer_error("parser select variable error");
+                }
+            }
+        }
+
     }
 
     /// Tokenize an identifier or keyword, after the first char is already consumed.
