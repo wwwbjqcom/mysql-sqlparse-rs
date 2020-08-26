@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "lock tables a read , b read";
+    let sql = "lock tables t1 read";
     //let sql = "";
     let dialect = MySqlDialect {};
 
@@ -24,11 +24,5 @@ fn main() {
 
     println!("AST: {:?}", ast);
 
-    let sql = "unlock tables";
-    //let sql = "";
-    let dialect = MySqlDialect {};
 
-    let ast = Parser::parse_sql(&dialect, sql).unwrap();
-
-    println!("AST: {:?}", ast);
 }

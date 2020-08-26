@@ -30,7 +30,7 @@ pub use self::ddl::{
 pub use self::operator::{BinaryOperator, UnaryOperator};
 pub use self::query::{
     Cte, Fetch, Join, JoinConstraint, JoinOperator, Offset, OffsetRows, OrderByExpr, Query, Select,
-    SelectItem, SetExpr, SetOperator, TableAlias, TableFactor, TableWithJoins, Top, Values, SetLockInfo, LockInfo,
+    SelectItem, SetExpr, SetOperator, TableAlias, TableFactor, TableWithJoins, Top, Values, LockInfo,
     LOCKType,
 };
 pub use self::value::{DateTimeField, Value};
@@ -558,6 +558,12 @@ pub enum Statement {
         condition: Expr,
         message: Option<Expr>,
     },
+
+    Lock {
+        lock_tables: Vec<LockInfo>,
+    },
+
+    UNLock { chain: bool },
 }
 
 impl fmt::Display for Statement {
@@ -824,6 +830,12 @@ impl fmt::Display for Statement {
                     write!(f, " AS {}", m)?;
                 }
                 Ok(())
+            }
+            Statement::UNLock { chain } => {
+                write!(f, "UNLOCK{}", if *chain { " AND CHAIN" } else { "" },)
+            }
+            Statement::Lock { lock_tables } => {
+                write!(f, "LOCK{:?}", lock_tables)
             }
         }
     }
