@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "drop index aa on t1.t1";
+    let sql = "create database t1";
     //let sql = "";
     let dialect = MySqlDialect {};
 

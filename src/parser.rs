@@ -1120,7 +1120,9 @@ impl Parser {
             self.parse_create_virtual_table()
         } else if self.parse_keyword(Keyword::SCHEMA) {
             self.parse_create_schema()
-        } else {
+        } else if self.parse_keyword(Keyword::DATABASE) {
+            self.parse_create_schema()
+        }else {
             self.expected("an object type after CREATE", self.peek_token())
         }
     }
