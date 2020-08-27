@@ -571,7 +571,7 @@ pub enum Statement {
         parameter: Option<Vec<Expr>>
     },
     /// USE DATABASE
-    Use {
+    ChangeDatabase {
         database: String
     }
 }
@@ -848,11 +848,13 @@ impl fmt::Display for Statement {
                 write!(f, "LOCK{:?}", lock_tables)
             }
             Statement::Call { name, parameter } => {
-                write!(f, "Call{}", name);
-                write!(f, "parameter{:?}", parameter);
+                write!(f, "Call {}", name);
+                if let Some(p) = parameter{
+                    write!(f, "parameter{:?}",p);
+                }
                 Ok(())
             }
-            Statement::Use { database } => {
+            Statement::ChangeDatabase { database } => {
                 write!(f, "USE DATABASE{}", database)
             }
         }

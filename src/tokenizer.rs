@@ -481,17 +481,17 @@ impl<'a> Tokenizer<'a> {
     fn tokenizer_backticks_string(&self, chars: &mut Peekable<Chars<'_>>,) -> Result<String, TokenizerError>{
         let mut st = String::from("");
         chars.next(); // consume the first char
-        'a: loop{
+        'aa: loop{
             match chars.peek() {
                 Some(&ch) => match ch {
                     '`' => {
                         chars.next();
-                        break 'a;
+                        break 'aa;
                     }
                     ch if self.dialect.is_identifier_start(ch) => {
                         chars.next(); // consume the first char
                         st = self.tokenize_word(ch, chars);
-                        continue 'a;
+                        continue 'aa;
                     }
                     _ => {
                         return self.tokenizer_error("parser sql error");

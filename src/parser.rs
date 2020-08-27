@@ -168,7 +168,7 @@ impl Parser {
     pub fn parse_use(&mut self) -> Result<Statement, ParserError> {
         let database_name = self.parse_identifier()?;
         if self.consume_token(&Token::EOF){
-            return Ok(Statement::Use {database: database_name.to_string()});
+            return Ok(Statement::ChangeDatabase {database: database_name.to_string()});
         }
         return self.expected(
             "Use Wrong syntax",
