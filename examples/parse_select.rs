@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "select * from t1 where id in (select id from t2 )";
+    let sql = "drop index aa on t1.t1";
     //let sql = "";
     let dialect = MySqlDialect {};
 

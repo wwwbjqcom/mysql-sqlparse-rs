@@ -151,6 +151,7 @@ define_keywords!(
     CURRENT_USER,
     CURSOR,
     CYCLE,
+    DATABASE,
     DATE,
     DAY,
     DEALLOCATE,
@@ -463,6 +464,7 @@ define_keywords!(
 pub const RESERVED_FOR_TABLE_ALIAS: &[Keyword] = &[
     // Reserved as both a table and a column alias:
     Keyword::WITH,
+    Keyword::DATABASE,
     Keyword::LOCK,
     Keyword::UNLOCK,
     Keyword::SELECT,
@@ -497,6 +499,7 @@ pub const RESERVED_FOR_COLUMN_ALIAS: &[Keyword] = &[
     // Reserved as both a table and a column alias:
     Keyword::WITH,
     Keyword::LOCK,
+    Keyword::DATABASE,
     Keyword::UNLOCK,
     Keyword::SELECT,
     Keyword::WHERE,

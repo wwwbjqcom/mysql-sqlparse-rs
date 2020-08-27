@@ -515,6 +515,8 @@ pub enum Statement {
         if_exists: bool,
         /// One or more objects to drop. (ANSI SQL requires exactly one.)
         names: Vec<ObjectName>,
+        /// an optional `drop index` for mysql
+        on_info: ObjectName,
         /// Whether `CASCADE` was specified. This will be `false` when
         /// `RESTRICT` or no drop behavior at all was specified.
         cascade: bool,
@@ -772,14 +774,15 @@ impl fmt::Display for Statement {
                 object_type,
                 if_exists,
                 names,
-                cascade,
+                on_info, cascade,
             } => write!(
                 f,
-                "DROP {}{} {}{}",
+                "DROP {}{} {}{} {}",
                 object_type,
                 if *if_exists { " IF EXISTS" } else { "" },
                 display_comma_separated(names),
                 if *cascade { " CASCADE" } else { "" },
+                if object_type == &ObjectType::Index { format!( "ON {}", on_info)} else { "".to_string() },
             ),
             Statement::SetVariable {
                 local,

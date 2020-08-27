@@ -1219,13 +1219,21 @@ impl Parser {
             ObjectType::Index
         } else if self.parse_keyword(Keyword::SCHEMA) {
             ObjectType::Schema
-        } else {
+        } else if self.parse_keyword(Keyword::DATABASE) {
+            ObjectType::Schema
+        }else {
             return self.expected("TABLE, VIEW, INDEX or SCHEMA after DROP", self.peek_token());
         };
         // Many dialects support the non standard `IF EXISTS` clause and allow
         // specifying multiple objects to delete in a single statement
         let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
         let names = self.parse_comma_separated(Parser::parse_object_name)?;
+        let mut on_info = ObjectName{ 0: vec![] };
+        if let ObjectType::Index = object_type{
+            if self.parse_keyword(Keyword::ON){
+                on_info = self.parse_object_name()?;
+            }
+        }
         let cascade = self.parse_keyword(Keyword::CASCADE);
         let restrict = self.parse_keyword(Keyword::RESTRICT);
         if cascade && restrict {
@@ -1235,6 +1243,7 @@ impl Parser {
             object_type,
             if_exists,
             names,
+            on_info,
             cascade,
         })
     }
