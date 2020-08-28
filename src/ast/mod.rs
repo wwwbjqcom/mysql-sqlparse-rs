@@ -534,7 +534,12 @@ pub enum Statement {
     /// SHOW <variable>
     ///
     /// Note: this is a PostgreSQL-specific statement.
-    ShowVariable { variable: Ident },
+    ShowVariable {
+        variable: Ident ,
+        global: bool,
+        /// WHERE
+        selection: Option<Expr>,
+    },
     /// SHOW COLUMNS
     ///
     /// Note: this is a MySQL-specific statement.
@@ -795,7 +800,13 @@ impl fmt::Display for Statement {
                 }
                 write!(f, "{} = {}", variable, value)
             }
-            Statement::ShowVariable { variable } => write!(f, "SHOW {}", variable),
+            Statement::ShowVariable { variable, global, selection } => {
+                write!(f, "SHOW {} {}", if *global {"GLOBAL"} else {""}, variable )?;
+                if let Some(selection) = selection {
+                    write!(f, " WHERE {}", selection)?;
+                }
+                Ok(())
+            }
             Statement::ShowColumns {
                 extended,
                 full,

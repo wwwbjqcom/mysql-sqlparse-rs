@@ -2066,8 +2066,22 @@ impl Parser {
             self.prev_token();
             self.parse_show_columns()
         } else {
+            let global = if self.parse_keyword(Keyword::GLOBAL){
+                true
+            }else {
+                false
+            };
+            let variable = self.parse_identifier()?;
+            let selection = if self.parse_keyword(Keyword::WHERE) {
+                Some(self.parse_expr()?)
+            } else {
+                None
+            };
+
             Ok(Statement::ShowVariable {
-                variable: self.parse_identifier()?,
+                variable,
+                global,
+                selection
             })
         }
     }

@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "create database t1";
+    let sql = "show status where a='con'";
     //let sql = "";
     let dialect = MySqlDialect {};
 
