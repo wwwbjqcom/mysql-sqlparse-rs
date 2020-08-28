@@ -11,5 +11,6 @@ the extended syntax is as follows
  6. support setting temporary variables, such as set @a=1
  7. use database
  8. support keyword backticks
+ 9. create database、drop index ..on..
 
  
