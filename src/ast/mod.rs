@@ -557,6 +557,11 @@ pub enum Statement {
         table_name: ObjectName,
         filter: Option<ShowStatementFilter>,
     },
+    /// SHOW CREATE TABLE
+    ShowCreate {
+        table_name: ObjectName,
+    },
+
     /// `{ BEGIN [ TRANSACTION | WORK ] | START TRANSACTION } ...`
     StartTransaction { modes: Vec<TransactionMode> },
     /// `SET TRANSACTION ...`
@@ -588,7 +593,11 @@ pub enum Statement {
     /// USE DATABASE
     ChangeDatabase {
         database: String
-    }
+    },
+
+    Desc {
+        table_name: ObjectName
+    },
 }
 
 impl fmt::Display for Statement {
@@ -885,6 +894,12 @@ impl fmt::Display for Statement {
                     write!(f, "WHERE {}", p)?;
                 }
                 Ok(())
+            }
+            Statement::Desc { table_name } => {
+                write!(f, "DESC {}", table_name)
+            }
+            Statement::ShowCreate { table_name } => {
+                write!(f, "SHOW CREATE TABLE {}", table_name)
             }
         }
     }

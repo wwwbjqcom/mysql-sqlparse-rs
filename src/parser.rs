@@ -155,6 +155,7 @@ impl Parser {
                 Keyword::LOCK => Ok(self.parse_lock()?),
                 Keyword::UNLOCK => Ok(self.parse_unlock()?),
                 Keyword::USE => Ok(self.parse_use()?),
+                Keyword::DESC => Ok(self.parse_desc()?),
                 _ => self.expected("an SQL statement", Token::Word(w)),
             },
             Token::LParen => {
@@ -163,6 +164,11 @@ impl Parser {
             }
             unexpected => self.expected("an SQL statement", unexpected),
         }
+    }
+
+    pub fn parse_desc(&mut self) -> Result<Statement, ParserError>{
+        let table_name = self.parse_object_name()?;
+        Ok(Statement::Desc { table_name })
     }
 
     pub fn parse_use(&mut self) -> Result<Statement, ParserError> {
@@ -2079,7 +2085,15 @@ impl Parser {
         {
             self.prev_token();
             self.parse_show_columns()
-        } else {
+        } else if self.parse_keyword(Keyword::CREATE) {
+            if self.parse_keyword(Keyword::TABLE){
+                let table_name = self.parse_object_name()?;
+                return Ok(Statement::ShowCreate { table_name });
+            }else {
+                self.prev_token();
+                return self.expected("equals sign or TO", self.peek_token());
+            }
+        }else {
             let global = if self.parse_keyword(Keyword::GLOBAL){
                 true
             }else {
