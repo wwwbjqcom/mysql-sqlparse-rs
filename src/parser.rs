@@ -2022,11 +2022,25 @@ impl Parser {
         let modifier = self.parse_one_of_keywords(&[Keyword::SESSION, Keyword::LOCAL]);
         let variable = self.parse_identifier()?;
         if self.consume_token(&Token::Eq) || self.parse_keyword(Keyword::TO) {
-            Ok(Statement::SetVariable {
-                local: modifier == Some(Keyword::LOCAL),
-                variable,
-                value: self.parse_set_variables_value()?,
-            })
+            let value = self.parse_set_variables_value()?;
+            if !self.consume_token(&Token::EOF){
+                let selection = if self.parse_keyword(Keyword::WHERE) {
+                    Some(self.parse_expr()?)
+                } else {
+                    None
+                };
+                Ok(Statement::AdminSetVariable {
+                    variable,
+                    value,
+                    selection
+                })
+            }else {
+                Ok(Statement::SetVariable {
+                    local: modifier == Some(Keyword::LOCAL),
+                    variable,
+                    value,
+                })
+            }
         } else if variable.value == "TRANSACTION" && modifier.is_none() {
             Ok(Statement::SetTransaction {
                 modes: self.parse_transaction_modes()?,

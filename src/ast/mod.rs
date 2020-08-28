@@ -531,6 +531,14 @@ pub enum Statement {
         variable: Ident,
         value: SetVariableValue,
     },
+    /// 带where条件的set
+    AdminSetVariable{
+        variable: Ident,
+        value: SetVariableValue,
+        /// where
+        selection: Option<Expr>,
+    },
+
     /// SHOW <variable>
     ///
     /// Note: this is a PostgreSQL-specific statement.
@@ -870,6 +878,13 @@ impl fmt::Display for Statement {
             }
             Statement::ChangeDatabase { database } => {
                 write!(f, "USE DATABASE{}", database)
+            }
+            Statement::AdminSetVariable { variable, value, selection } => {
+                write!(f, "SET {} = {}", variable, value)?;
+                if let Some(p) = selection{
+                    write!(f, "WHERE {}", p)?;
+                }
+                Ok(())
             }
         }
     }
