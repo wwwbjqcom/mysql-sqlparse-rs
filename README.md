@@ -12,5 +12,6 @@ the extended syntax is as follows
  7. use database
  8. support keyword backticks
  9. create database、drop index ..on..
+ 10. show create table、desc 
 
  
