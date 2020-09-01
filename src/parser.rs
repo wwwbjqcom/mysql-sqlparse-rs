@@ -2064,7 +2064,6 @@ impl Parser {
 
     fn parse_set_variables_value(&mut self) -> Result<SetVariableValue, ParserError>{
         let token = self.peek_token();
-        println!("{:}", &token);
         let value = match (self.parse_value(), token) {
             (Ok(value), _) => SetVariableValue::Literal(value),
             (Err(_), Token::Word(ident)) => SetVariableValue::Ident(ident.to_ident()),
