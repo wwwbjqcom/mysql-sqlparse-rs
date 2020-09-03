@@ -483,7 +483,7 @@ pub enum Statement {
     Explain {
         analyze: Option<bool>,
         format_type: Option<ExplainFormat>,
-        body: Box<ExplainStmt>
+        body: ExplainStmt
     },
     /// INSERT
     Insert {

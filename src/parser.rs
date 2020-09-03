@@ -184,7 +184,7 @@ impl Parser {
             }
             unexpected => self.expected("Explain explainable_stmt ", unexpected),
         }?;
-        Ok(Statement::Explain { analyze, format_type, body: Box::new(body) })
+        Ok(Statement::Explain { analyze, format_type, body })
     }
 
     pub fn parse_explain_for_connection(&mut self) -> Result<ExplainStmt, ParserError>{
