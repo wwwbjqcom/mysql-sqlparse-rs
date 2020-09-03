@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "show create table aa";
+    let sql = "explain ANALYZE format=json for connection 1";
     //let sql = "";
     let dialect = MySqlDialect {};
 

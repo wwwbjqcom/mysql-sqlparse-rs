@@ -134,11 +134,13 @@ impl Parser {
                     self.prev_token();
                     Ok(Statement::Query(Box::new(self.parse_query()?)))
                 }
+                Keyword::EXPLAIN => Ok(self.parse_explain()?),
                 Keyword::CALL => Ok(self.parse_call()?),
                 Keyword::CREATE => Ok(self.parse_create()?),
                 Keyword::DROP => Ok(self.parse_drop()?),
                 Keyword::DELETE => Ok(self.parse_delete()?),
                 Keyword::INSERT => Ok(self.parse_insert()?),
+                Keyword::REPLACE => Ok(self.parse_insert()?),
                 Keyword::UPDATE => Ok(self.parse_update()?),
                 Keyword::ALTER => Ok(self.parse_alter()?),
                 Keyword::COPY => Ok(self.parse_copy()?),
@@ -164,6 +166,70 @@ impl Parser {
             }
             unexpected => self.expected("an SQL statement", unexpected),
         }
+    }
+
+    pub fn parse_explain(&mut self) -> Result<Statement, ParserError>{
+        let analyze = self.parse_explain_analyze()?;
+        let format_type = self.parse_explain_format()?;
+        let body = match self.next_token(){
+            Token::Word(w) => match w.keyword {
+                Keyword::SELECT | Keyword::WITH | Keyword::VALUE => {
+                    self.prev_token();
+                    Ok(ExplainStmt::Stmt(Box::new(Statement::Query(Box::new(self.parse_query()?)))))
+                }
+                Keyword::UPDATE => Ok(ExplainStmt::Stmt(Box::new(self.parse_update()?))),
+                Keyword::DELETE => Ok(ExplainStmt::Stmt(Box::new(self.parse_delete()?))),
+                Keyword::FOR => Ok(self.parse_explain_for_connection()?),
+                _ => self.expected("Explain explainable_stmt ", Token::Word(w))
+            }
+            unexpected => self.expected("Explain explainable_stmt ", unexpected),
+        }?;
+        Ok(Statement::Explain { analyze, format_type, body: Box::new(body) })
+    }
+
+    pub fn parse_explain_for_connection(&mut self) -> Result<ExplainStmt, ParserError>{
+        if self.parse_keyword(Keyword::CONNECTION){
+            let token = self.peek_token();
+            let value = match (self.parse_value(), token) {
+                (Ok(value), _) => ExplainStmt::Connection(value),
+                (Err(_), unexpected) => self.expected("connection value", unexpected)?,
+            };
+            Ok(value)
+        }else {
+            self.expected("EXPLAIN FOR  ", self.peek_token())
+        }
+    }
+
+    pub fn parse_explain_analyze(&mut self) -> Result<Option<bool>, ParserError>{
+        if self.parse_keyword(Keyword::ANALYZE){
+            Ok(Some(true))
+        }else {
+            Ok(None)
+        }
+
+    }
+
+    pub fn parse_explain_format(&mut self) -> Result<Option<ExplainFormat>, ParserError>{
+        if self.parse_keyword(Keyword::FORMAT){
+            if self.consume_token(&Token::Eq){
+                if self.parse_keyword(Keyword::JSON) {
+                    Ok(Some(ExplainFormat::JSON))
+                }else if self.parse_keyword(Keyword::TRADITIONAL) {
+                    Ok(Some(ExplainFormat::TRADITIONAL))
+                }else if self.parse_keyword(Keyword::TREE) {
+                    Ok(Some(ExplainFormat::TREE))
+                }
+                else {
+                    self.expected("EXPLAIN FORMAT =", self.peek_token())
+                }
+            }else {
+                self.expected("EXPLAIN FORMAT =", self.peek_token())
+            }
+        }else {
+            Ok(None)
+        }
+
+
     }
 
     pub fn parse_desc(&mut self) -> Result<Statement, ParserError>{

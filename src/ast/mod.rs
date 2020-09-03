@@ -34,6 +34,7 @@ pub use self::query::{
     LOCKType,
 };
 pub use self::value::{DateTimeField, Value};
+use std::process::exit;
 
 struct DisplaySeparated<'a, T>
 where
@@ -139,6 +140,56 @@ impl fmt::Display for ObjectName {
         write!(f, "{}", display_separated(&self.0, "."))
     }
 }
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum ExplainStmt{
+    Stmt(Box<Statement>),
+    Connection(Value)
+}
+impl fmt::Display for ExplainStmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ExplainStmt::*;
+        match self {
+            Stmt(ident) => write!(f, "{}", ident),
+            Connection(literal) => write!(f, "FOR CONNECTION {}", literal),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum ExplainFormat{
+    TRADITIONAL,
+    JSON,
+    TREE
+}
+impl fmt::Display for ExplainFormat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ExplainFormat::*;
+        match self {
+            TRADITIONAL => write!(f, "=TRADITIONAL"),
+            JSON => write!(f, "=JSON"),
+            TREE => write!(f, "=TREE"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum ExplainType{
+    FORMAT(Box<ExplainFormat>)
+}
+impl fmt::Display for ExplainType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ExplainType::*;
+        match self {
+            FORMAT(a) => write!(f, "FORMAT={}", a),
+        }
+    }
+}
+
 
 /// An SQL expression of any type.
 ///
@@ -428,6 +479,12 @@ impl fmt::Display for WindowFrameBound {
 pub enum Statement {
     /// SELECT
     Query(Box<Query>),
+    /// EXPLAIN
+    Explain {
+        analyze: Option<bool>,
+        format_type: Option<ExplainFormat>,
+        body: Box<ExplainStmt>
+    },
     /// INSERT
     Insert {
         /// TABLE
@@ -437,6 +494,16 @@ pub enum Statement {
         /// A SQL query that specifies what to insert
         source: Box<Query>,
     },
+    /// REPLACE
+    Replace {
+        /// TABLE
+        table_name: ObjectName,
+        /// COLUMNS
+        columns: Vec<Ident>,
+        /// A SQL query that specifies what to insert
+        source: Box<Query>,
+    },
+
     Copy {
         /// TABLE
         table_name: ObjectName,
@@ -607,7 +674,28 @@ impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Statement::Query(s) => write!(f, "{}", s),
+            Statement::Explain{ analyze, format_type, body } => {
+                write!(f, "EXPLAIN")?;
+                if let Some(a) = analyze{
+                    write!(f, "ANALYZE")?;
+                }
+                if let Some(a) = format_type{
+                    write!(f, "FORMAT = {}", a)?;
+                }
+                write!(f, "{}", body)
+            }
             Statement::Insert {
+                table_name,
+                columns,
+                source,
+            } => {
+                write!(f, "INSERT INTO {} ", table_name)?;
+                if !columns.is_empty() {
+                    write!(f, "({}) ", display_comma_separated(columns))?;
+                }
+                write!(f, "{}", source)
+            }
+            Statement::Replace {
                 table_name,
                 columns,
                 source,
