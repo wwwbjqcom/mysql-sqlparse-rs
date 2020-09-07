@@ -14,3 +14,8 @@ the extended syntax is as follows
  9. create database、drop index ..on..
  10. show create table、desc 
  11. support the explain syntax of mysql 8.0
+ 12. supports direct filtering of the syntax with length in integer fields
+ 13. support auto_increment, alter table modify | change column
+
+
+ 
