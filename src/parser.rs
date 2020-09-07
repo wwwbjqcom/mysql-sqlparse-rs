@@ -1373,7 +1373,15 @@ impl Parser {
     fn parse_column_def(&mut self) -> Result<ColumnDef, ParserError> {
         let name = self.parse_identifier()?;
         let data_type = self.parse_data_type()?;
+
+        // if self.parse_keyword(Keyword::AUTO_INCREMENT){
+        //     auto_increment = true;
+        // }
+
         let collation = if self.parse_keyword(Keyword::COLLATE) {
+            Some(self.parse_object_name()?)
+        } else if self.parse_keyword(Keyword::AUTO_INCREMENT) {
+            self.prev_token();
             Some(self.parse_object_name()?)
         } else {
             None
@@ -1566,13 +1574,23 @@ impl Parser {
         self.expect_keyword(Keyword::TABLE)?;
         let _ = self.parse_keyword(Keyword::ONLY);
         let table_name = self.parse_object_name()?;
-        let operation = if self.parse_keyword(Keyword::ADD) {
+        let operation = if self.parse_keyword(Keyword::ADD) ||
+            self.parse_keyword(Keyword::MODIFY){
             if let Some(constraint) = self.parse_optional_table_constraint()? {
                 AlterTableOperation::AddConstraint(constraint)
             } else {
                 let _ = self.parse_keyword(Keyword::COLUMN);
                 let column_def = self.parse_column_def()?;
                 AlterTableOperation::AddColumn { column_def }
+            }
+        } else if self.parse_keyword(Keyword::CHANGE) {
+            let _ = self.parse_keyword(Keyword::COLUMN);
+            let old_column_name = self.parse_identifier()?;
+            let new_column_def = self.parse_column_def()?;
+
+            AlterTableOperation::ChangeColumn {
+                old_column_name,
+                new_column_def,
             }
         } else if self.parse_keyword(Keyword::RENAME) {
             if self.parse_keyword(Keyword::TO) {
@@ -1722,9 +1740,18 @@ impl Parser {
                     let _ = self.parse_keyword(Keyword::PRECISION);
                     Ok(DataType::Double)
                 }
-                Keyword::SMALLINT => Ok(DataType::SmallInt),
-                Keyword::INT | Keyword::INTEGER => Ok(DataType::Int),
-                Keyword::BIGINT => Ok(DataType::BigInt),
+                Keyword::SMALLINT => {
+                    let _ = self.parse_optional_precision()?;
+                    Ok(DataType::SmallInt)
+                },
+                Keyword::INT | Keyword::INTEGER => {
+                    let _ = self.parse_optional_precision()?;
+                    Ok(DataType::Int)
+                },
+                Keyword::BIGINT => {
+                    let _ = self.parse_optional_precision()?;
+                    Ok(DataType::BigInt)
+                },
                 Keyword::VARCHAR => Ok(DataType::Varchar(self.parse_optional_precision()?)),
                 Keyword::CHAR | Keyword::CHARACTER => {
                     if self.parse_keyword(Keyword::VARYING) {

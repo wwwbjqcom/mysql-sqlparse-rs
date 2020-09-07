@@ -38,6 +38,11 @@ pub enum AlterTableOperation {
         old_column_name: Ident,
         new_column_name: Ident,
     },
+    /// CHANGE [ column ] old_column_name new_column_name column_def
+    ChangeColumn {
+        old_column_name: Ident,
+        new_column_def: ColumnDef
+    },
     /// `RENAME TO <table_name>`
     RenameTable { table_name: Ident },
 }
@@ -68,6 +73,11 @@ impl fmt::Display for AlterTableOperation {
                 f,
                 "RENAME COLUMN {} TO {}",
                 old_column_name, new_column_name
+            ),
+            AlterTableOperation::ChangeColumn {
+                old_column_name,
+                new_column_def } =>  write!(
+                f, "{} {}", old_column_name, new_column_def
             ),
             AlterTableOperation::RenameTable { table_name } => {
                 write!(f, "RENAME TO {}", table_name)
@@ -150,6 +160,9 @@ pub struct ColumnDef {
 impl fmt::Display for ColumnDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {}", self.name, self.data_type)?;
+        if let Some(v) = &self.collation{
+            write!(f, "{}", v)?;
+        }
         for option in &self.options {
             write!(f, " {}", option)?;
         }

@@ -12,24 +12,16 @@
 
 #![warn(clippy::all)]
 
-use sqlparser::dialect::MySqlDialect;
+use sqlparser::dialect::PostgreSqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "explain ANALYZE format=json for connection 1";
+    let sql = "alter table a change column id id1 int auto_increment";
     //let sql = "";
-    let dialect = MySqlDialect {};
+    let dialect = PostgreSqlDialect {};
 
     let ast = Parser::parse_sql(&dialect, sql).unwrap();
 
     println!("AST: {:?}", ast);
-
-    let sql = "use sbtest";
-    //let sql = "";
-    let dialect = MySqlDialect {};
-
-    let ast = Parser::parse_sql(&dialect, sql).unwrap();
-    println!("AST: {:?}", ast);
-
 
 }

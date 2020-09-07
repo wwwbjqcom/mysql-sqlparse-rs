@@ -34,7 +34,6 @@ pub use self::query::{
     LOCKType,
 };
 pub use self::value::{DateTimeField, Value};
-use std::process::exit;
 
 struct DisplaySeparated<'a, T>
 where
@@ -676,7 +675,7 @@ impl fmt::Display for Statement {
             Statement::Query(s) => write!(f, "{}", s),
             Statement::Explain{ analyze, format_type, body } => {
                 write!(f, "EXPLAIN")?;
-                if let Some(a) = analyze{
+                if let Some(_a) = analyze{
                     write!(f, "ANALYZE")?;
                 }
                 if let Some(a) = format_type{
@@ -967,9 +966,9 @@ impl fmt::Display for Statement {
                 write!(f, "LOCK{:?}", lock_tables)
             }
             Statement::Call { name, parameter } => {
-                write!(f, "Call {}", name);
+                write!(f, "Call {}", name)?;
                 if let Some(p) = parameter{
-                    write!(f, "parameter{:?}",p);
+                    write!(f, "parameter{:?}",p)?;
                 }
                 Ok(())
             }
