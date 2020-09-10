@@ -12,13 +12,13 @@
 
 #![warn(clippy::all)]
 
-use sqlparser::dialect::PostgreSqlDialect;
+use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "alter table a change column id id1 int auto_increment";
+    let sql = "create table a(id int(10) auto_increment primary key CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci comment 'agdd')engine=innodb auto_increment=1 default charset=utf8 COLLATE =utf8mb4_general_ci";
     //let sql = "";
-    let dialect = PostgreSqlDialect {};
+    let dialect = MySqlDialect {};
 
     let ast = Parser::parse_sql(&dialect, sql).unwrap();
 

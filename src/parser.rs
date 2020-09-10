@@ -57,6 +57,9 @@ pub enum IsLateral {
 }
 use crate::ast::Statement::CreateVirtualTable;
 use IsLateral::*;
+use crate::ast::Expr::Collate;
+use crate::dialect::DBType;
+
 
 impl From<TokenizerError> for ParserError {
     fn from(e: TokenizerError) -> Self {
@@ -82,17 +85,21 @@ impl fmt::Display for ParserError {
 
 impl Error for ParserError {}
 
+
+
 /// SQL Parser
 pub struct Parser {
     tokens: Vec<Token>,
     /// The index of the first unprocessed token in `self.tokens`
     index: usize,
+
+    dialect_type: DBType
 }
 
 impl Parser {
     /// Parse the specified tokens
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, index: 0 }
+    pub fn new(tokens: Vec<Token>, db_type : DBType) -> Self {
+        Parser { tokens, index: 0 , dialect_type: db_type}
     }
 
     /// Parse a SQL statement and produce an Abstract Syntax Tree (AST)
@@ -100,7 +107,7 @@ impl Parser {
         let mut tokenizer = Tokenizer::new(dialect, &sql);
         let tokens = tokenizer.tokenize()?;
         // println!("Parsing sql tokens '{:?}'...", &tokens);
-        let mut parser = Parser::new(tokens);
+        let mut parser = Parser::new(tokens, dialect.check_db_type());
         let mut stmts = Vec::new();
         let mut expecting_statement_delimiter = false;
         debug!("Parsing sql '{}'...", sql);
@@ -496,14 +503,20 @@ impl Parser {
             unexpected => self.expected("an expression", unexpected),
         }?;
 
-        if self.parse_keyword(Keyword::COLLATE) {
-            Ok(Expr::Collate {
-                expr: Box::new(expr),
-                collation: self.parse_object_name()?,
-            })
-        } else {
-            Ok(expr)
+        match &self.dialect_type{
+            DBType::MySql => Ok(expr),
+            _ => {
+                return if self.parse_keyword(Keyword::COLLATE) {
+                    Ok(Expr::Collate {
+                        expr: Box::new(expr),
+                        collation: self.parse_object_name()?,
+                    })
+                } else {
+                    Ok(expr)
+                }
+            }
         }
+
     }
 
     pub fn parse_function(&mut self, name: ObjectName) -> Result<Expr, ParserError> {
@@ -1239,6 +1252,7 @@ impl Parser {
             columns,
             constraints,
             with_options: vec![],
+            table_options: vec![],
             if_not_exists: false,
             external: true,
             file_format: Some(file_format),
@@ -1348,7 +1362,7 @@ impl Parser {
 
         // PostgreSQL supports `WITH ( options )`, before `AS`
         let with_options = self.parse_with_options()?;
-
+        let table_options = self.parse_table_options()?;
         // Parse optional `AS ( query )`
         let query = if self.parse_keyword(Keyword::AS) {
             Some(Box::new(self.parse_query()?))
@@ -1361,6 +1375,7 @@ impl Parser {
             columns,
             constraints,
             with_options,
+            table_options,
             if_not_exists,
             external: false,
             file_format: None,
@@ -1429,6 +1444,60 @@ impl Parser {
         Ok((columns, constraints))
     }
 
+    pub fn parse_table_options(&mut self) -> Result<Vec<TableOptionDef>, ParserError>{
+        let mut table_options = vec![];
+        loop{
+            if self.consume_token(&Token::EOF){
+                break
+            }
+            table_options.push(self.parse_table_option_def()?);
+            
+        }
+        return Ok(table_options)
+    }
+    
+    pub fn parse_table_option_def(&mut self) -> Result<TableOptionDef, ParserError>{
+        let mut name = None;
+        let option = if self.parse_keyword(Keyword::COMMENT){
+            self.consume_table_option_token()?;
+            TableOption::Comment(self.parse_expr()?)
+        }else if self.parse_keyword(Keyword::COLLATE){
+            self.consume_table_option_token()?;
+            TableOption::Collate(self.parse_expr()?)
+        }else if self.parse_keyword(Keyword::DEFAULT) {
+            self.prev_token();
+            name = Some(self.parse_identifier()?);
+            if self.parse_keyword(Keyword::CHARSET){
+                self.consume_table_option_token()?;
+                TableOption::Charset(self.parse_expr()?)
+            }else {
+                return self.expected("talbe option for default charset", self.peek_token());
+            }
+        }else if self.parse_keyword(Keyword::AUTO_INCREMENT) {
+            self.consume_table_option_token()?;
+            match self.next_token(){
+                Token::Number(a) => TableOption::Auto_Increment(a.parse().unwrap()),
+                _ =>  return self.expected("table option for auto_increment", self.peek_token())
+            }
+        }else if self.parse_keyword(Keyword::ENGINE) {
+            self.consume_table_option_token()?;
+            TableOption::Engine(self.parse_expr()?)
+        }
+        else {
+            return self.expected("table option", self.peek_token());
+        };
+        Ok(TableOptionDef{ name, option})
+
+    }
+
+    pub fn consume_table_option_token(&mut self) -> Result<(), ParserError>{
+        return if self.consume_token(&Token::Eq) {
+            Ok(())
+        } else {
+            self.expected("table option", self.peek_token())
+        }
+    }
+
     pub fn parse_column_option_def(&mut self) -> Result<ColumnOptionDef, ParserError> {
         let name = if self.parse_keyword(Keyword::CONSTRAINT) {
             Some(self.parse_identifier()?)
@@ -1440,6 +1509,16 @@ impl Parser {
             ColumnOption::NotNull
         } else if self.parse_keyword(Keyword::NULL) {
             ColumnOption::Null
+        } else if self.parse_keyword(Keyword::COMMENT) {
+            ColumnOption::Comment(self.parse_expr()?)
+        } else if self.parse_keyword(Keyword::CHARACTER) {
+            if self.parse_keyword(Keyword::SET){
+                ColumnOption::Character(self.parse_expr()?)
+            }else {
+                return self.expected("column character set ", self.peek_token());
+            }
+        } else if self.parse_keyword(Keyword::COLLATE) {
+            ColumnOption::Collate(self.parse_expr()?)
         } else if self.parse_keyword(Keyword::DEFAULT) {
             ColumnOption::Default(self.parse_expr()?)
         } else if self.parse_keywords(&[Keyword::PRIMARY, Keyword::KEY]) {
@@ -1551,6 +1630,7 @@ impl Parser {
             }
         }
     }
+
 
     pub fn parse_with_options(&mut self) -> Result<Vec<SqlOption>, ParserError> {
         if self.parse_keyword(Keyword::WITH) {
@@ -2465,9 +2545,7 @@ impl Parser {
 
     /// Parse a comma-delimited list of projections after SELECT
     pub fn parse_select_item(&mut self) -> Result<SelectItem, ParserError> {
-        // println!("111");
         let expr = self.parse_expr()?;
-        // println!("1234");
         if let Expr::Wildcard = expr {
             Ok(SelectItem::Wildcard)
         } else if let Expr::QualifiedWildcard(prefix) = expr {

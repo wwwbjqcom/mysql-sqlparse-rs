@@ -25,7 +25,7 @@ use std::fmt;
 pub use self::data_type::DataType;
 pub use self::ddl::{
     AlterTableOperation, ColumnDef, ColumnOption, ColumnOptionDef, ReferentialAction,
-    TableConstraint,
+    TableConstraint, TableOptionDef, TableOption
 };
 pub use self::operator::{BinaryOperator, UnaryOperator};
 pub use self::query::{
@@ -544,6 +544,7 @@ pub enum Statement {
         columns: Vec<ColumnDef>,
         constraints: Vec<TableConstraint>,
         with_options: Vec<SqlOption>,
+        table_options: Vec<TableOptionDef>,
         if_not_exists: bool,
         external: bool,
         file_format: Option<FileFormat>,
@@ -784,7 +785,7 @@ impl fmt::Display for Statement {
                 columns,
                 constraints,
                 with_options,
-                if_not_exists,
+                table_options, if_not_exists,
                 external,
                 file_format,
                 location,
@@ -828,6 +829,11 @@ impl fmt::Display for Statement {
                         location.as_ref().unwrap()
                     )?;
                 }
+
+                for tbl_option in table_options{
+                    write!(f, "{}", tbl_option)?;
+                }
+
                 if !with_options.is_empty() {
                     write!(f, " WITH ({})", display_comma_separated(with_options))?;
                 }

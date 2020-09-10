@@ -16,6 +16,7 @@ use super::{display_comma_separated, DataType, Expr, Ident, ObjectName};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use crate::ast::{Statement, Value};
 
 /// An `ALTER TABLE` (`Statement::AlterTable`) operation
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -170,6 +171,50 @@ impl fmt::Display for ColumnDef {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct TableOptionDef {
+    pub name: Option<Ident>,
+    pub option: TableOption,
+}
+
+impl fmt::Display for TableOptionDef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(v) = &self.name{
+            write!(f, "{} ", v)?;
+        }
+        write!(f, "{}", self.option)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum TableOption {
+    /// default charset=?
+    Charset(Expr),
+    /// table comment
+    Comment(Expr),
+    /// table engine
+    Engine(Expr),
+    /// collate=?
+    Collate(Expr),
+    /// auto_increment
+    Auto_Increment(usize)
+}
+
+impl fmt::Display for TableOption {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TableOption::*;
+        match self {
+            Charset(expr) => write!(f, "CHARSET={}", expr),
+            Comment(expr) => write!(f, "COMMENT {}", expr),
+            Engine(expr) => write!(f, "ENGINE={}", expr),
+            Collate(expr) => write!(f, "COLLATE={}", expr),
+            Auto_Increment(a) => write!(f, "AUTO_INCREMENT={}", a),
+        }
+    }
+}
+
 /// An optionally-named `ColumnOption`: `[ CONSTRAINT <name> ] <column-option>`.
 ///
 /// Note that implementations are substantially more permissive than the ANSI
@@ -225,8 +270,11 @@ pub enum ColumnOption {
         on_delete: Option<ReferentialAction>,
         on_update: Option<ReferentialAction>,
     },
+    Comment(Expr),
     // `CHECK (<expr>)`
     Check(Expr),
+    Character(Expr),
+    Collate(Expr),
 }
 
 impl fmt::Display for ColumnOption {
@@ -239,6 +287,9 @@ impl fmt::Display for ColumnOption {
             Unique { is_primary } => {
                 write!(f, "{}", if *is_primary { "PRIMARY KEY" } else { "UNIQUE" })
             }
+            Character(expr) => write!(f, "CHARACTER SET {}", expr),
+            Collate(expr) => write!(f, "COLLATE {}", expr),
+            Comment(expr) => write!(f, "COMMENT {}", expr),
             ForeignKey {
                 foreign_table,
                 referred_columns,
