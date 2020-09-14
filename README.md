@@ -16,6 +16,7 @@ the extended syntax is as follows
  11. support the explain syntax of mysql 8.0
  12. supports direct filtering of the syntax with length in integer fields
  13. support auto_increment, alter table modify | change column
+ 14. create table and alter table add index/drop index
 
 
  
