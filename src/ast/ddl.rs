@@ -16,7 +16,137 @@ use super::{display_comma_separated, DataType, Expr, Ident, ObjectName};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use crate::ast::{Statement, Value};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct IndexInfo{
+    pub constraint: Option<Ident>,
+    pub index_type: Option<MysqlIndexStorageType>,
+    pub index: IndexDef,
+}
+impl fmt::Display for IndexInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(c) = &self.constraint{
+            write!(f, "CONSTRAINT {}", c)?;
+        }
+        if let Some(i) = &self.index_type{
+            write!(f, "{}", i)?;
+        }
+        write!(f, "{}", self.index)
+    }
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum IndexDef{
+    Normal(MysqlIndex),
+    PrimaryKey(MysqlIndex),
+    ForeignKey(MysqlIndex),
+    Unique(MysqlIndex),
+}
+impl fmt::Display for IndexDef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self{
+            IndexDef::Normal(i) => write!(f, "{}", i),
+            IndexDef::Unique(i) => write!(f, "Unique {}", i),
+            IndexDef::PrimaryKey(i) => write!(f, "PRIMARY KEY{}", i),
+            IndexDef::ForeignKey(i) => write!(f, "FOREIGN KEY{}", i)
+        }
+    }
+}
+
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum MysqlIndexType {
+    Hash,
+    Btree,
+}
+
+impl fmt::Display for MysqlIndexType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self{
+            MysqlIndexType::Btree => write!(f, "USING BTREE"),
+            MysqlIndexType::Hash => write!(f, "USING HASH"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum MysqlIndexStorageType {
+    FullText,
+    Spatial,
+}
+
+impl fmt::Display for MysqlIndexStorageType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self{
+            MysqlIndexStorageType::FullText => write!(f, "FULLTEXT "),
+            MysqlIndexStorageType::Spatial => write!(f, "SPATIAL "),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum IndexOptions{
+    KeyBlockSize(Expr),
+    IndexType(Ident),
+    WithParser(Ident),
+    Comment(Expr),
+    References{
+        table: Ident,
+        column: Vec<Ident>
+    }
+}
+impl fmt::Display for IndexOptions {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self{
+            IndexOptions::KeyBlockSize(expr) => write!(f, "KEY_BLOCK_SIZE {}", expr),
+            IndexOptions::IndexType(t) => write!(f, "{}", t),
+            IndexOptions::WithParser(i) => write!(f, "WITH PARSER {}", i),
+            IndexOptions::Comment(e) => write!(f, "COMMENT {}", e),
+            IndexOptions::References { table, column } => write!(f, "REFERENCES {}({})", table,display_comma_separated(column))
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct MysqlIndex{
+    pub name: Option<Ident>,                            // key、index
+    pub index_name: Option<Ident>,
+    pub index_type: Option<Ident>,
+    pub key_parts: Option<Vec<Ident>>,
+    pub index_option: Option<IndexOptions>,
+    pub fk_symbol: Option<Ident>                        // only drop foreign index
+}
+impl fmt::Display for MysqlIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(n) = &self.name{
+            write!(f, "{}", n)?;
+        }
+        if let Some(i) = &self.index_name{
+            write!(f, " {}", i)?;
+        }
+        if let Some(i) = &self.index_type{
+            write!(f, " {}", i)?;
+        }
+        if let Some(k) = &self.key_parts{
+            write!(f, "({})", display_comma_separated(k))?;
+        }
+        if let Some(i) = &self.index_option{
+            write!(f, " {}", i)?;
+        }
+        if let Some(fk) = &self.fk_symbol{
+            write!(f, " {}", fk)?;
+        }
+        write!(f, "")
+    }
+}
 
 /// An `ALTER TABLE` (`Statement::AlterTable`) operation
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -43,6 +173,14 @@ pub enum AlterTableOperation {
     ChangeColumn {
         old_column_name: Ident,
         new_column_def: ColumnDef
+    },
+    /// ADD index
+    AddIndex {
+        index_def: IndexInfo
+    },
+    /// Drop index ...
+    DropIndex {
+        index_def: IndexDef,
     },
     /// `RENAME TO <table_name>`
     RenameTable { table_name: Ident },
@@ -82,6 +220,12 @@ impl fmt::Display for AlterTableOperation {
             ),
             AlterTableOperation::RenameTable { table_name } => {
                 write!(f, "RENAME TO {}", table_name)
+            }
+            AlterTableOperation::AddIndex { index_def } => {
+                write!(f, "ADD {}",index_def)
+            }
+            AlterTableOperation::DropIndex { index_def } => {
+                write!(f, "DROP {}", index_def)
             }
         }
     }
@@ -275,6 +419,7 @@ pub enum ColumnOption {
     Check(Expr),
     Character(Expr),
     Collate(Expr),
+    After(Expr),
 }
 
 impl fmt::Display for ColumnOption {
@@ -290,6 +435,7 @@ impl fmt::Display for ColumnOption {
             Character(expr) => write!(f, "CHARACTER SET {}", expr),
             Collate(expr) => write!(f, "COLLATE {}", expr),
             Comment(expr) => write!(f, "COMMENT {}", expr),
+            After(expr) => write!(f, "AFTER {}", expr),
             ForeignKey {
                 foreign_table,
                 referred_columns,

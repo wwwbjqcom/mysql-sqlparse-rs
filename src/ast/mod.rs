@@ -25,7 +25,8 @@ use std::fmt;
 pub use self::data_type::DataType;
 pub use self::ddl::{
     AlterTableOperation, ColumnDef, ColumnOption, ColumnOptionDef, ReferentialAction,
-    TableConstraint, TableOptionDef, TableOption
+    TableConstraint, TableOptionDef, TableOption, MysqlIndex, IndexOptions, MysqlIndexStorageType,MysqlIndexType,
+    IndexDef,IndexInfo
 };
 pub use self::operator::{BinaryOperator, UnaryOperator};
 pub use self::query::{
@@ -572,7 +573,7 @@ pub enum Statement {
     AlterTable {
         /// Table name
         name: ObjectName,
-        operation: AlterTableOperation,
+        operation: Vec<AlterTableOperation>,
     },
     /// DROP
     Drop {
@@ -883,7 +884,8 @@ impl fmt::Display for Statement {
                 write!(f, ");")
             }
             Statement::AlterTable { name, operation } => {
-                write!(f, "ALTER TABLE {} {}", name, operation)
+                write!(f, "ALTER TABLE {} {}", name, display_separated(operation, ","))
+
             }
             Statement::Drop {
                 object_type,

@@ -16,12 +16,12 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "create table a(id int(10) auto_increment primary key CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci comment 'agdd')engine=innodb auto_increment=1 default charset=utf8 COLLATE =utf8mb4_general_ci";
+    let sql = "alter table t1 add primary key(id), add index id_1(id) using btree, drop primary key, ADD FOREIGN KEY (s_cid) REFERENCES class(cid), add unique index(t1)";
     //let sql = "";
     let dialect = MySqlDialect {};
 
     let ast = Parser::parse_sql(&dialect, sql).unwrap();
 
-    println!("AST: {:?}", ast);
+    println!("AST: {:?}", ast[0].to_string());
 
 }

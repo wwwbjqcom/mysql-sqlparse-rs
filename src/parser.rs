@@ -57,7 +57,6 @@ pub enum IsLateral {
 }
 use crate::ast::Statement::CreateVirtualTable;
 use IsLateral::*;
-use crate::ast::Expr::Collate;
 use crate::dialect::DBType;
 
 
@@ -1404,7 +1403,7 @@ impl Parser {
         let mut options = vec![];
         loop {
             match self.peek_token() {
-                Token::EOF | Token::Comma | Token::RParen => break,
+                Token::EOF | Token::Comma | Token::RParen | Token::SemiColon => break,
                 _ => options.push(self.parse_column_option_def()?),
             }
         }
@@ -1511,7 +1510,9 @@ impl Parser {
             ColumnOption::Null
         } else if self.parse_keyword(Keyword::COMMENT) {
             ColumnOption::Comment(self.parse_expr()?)
-        } else if self.parse_keyword(Keyword::CHARACTER) {
+        } else if self.parse_keyword(Keyword::AFTER) {
+            ColumnOption::After(self.parse_expr()?)
+        }else if self.parse_keyword(Keyword::CHARACTER) {
             if self.parse_keyword(Keyword::SET){
                 ColumnOption::Character(self.parse_expr()?)
             }else {
@@ -1577,6 +1578,154 @@ impl Parser {
                 "one of RESTRICT, CASCADE, SET NULL, NO ACTION or SET DEFAULT",
                 self.peek_token(),
             )
+        }
+    }
+    
+    pub fn parse_alter_drop_index(&mut self) -> Result<IndexDef, ParserError>{
+        if self.parse_keyword(Keyword::INDEX) || self.parse_keyword(Keyword::KEY) {
+            Ok(IndexDef::Normal(self.parse_alter_index_def_normal(false, false, true)?))
+        }else if self.parse_keyword(Keyword::PRIMARY) {
+            self.expect_keyword(Keyword::KEY)?;
+            Ok(IndexDef::PrimaryKey(self.parse_alter_index_def_primary(true)?))
+        }else if self.parse_keyword(Keyword::FOREIGN) {
+            Ok(IndexDef::ForeignKey(self.parse_alter_index_def_normal(false, true, true)?))
+        }else {
+            self.expected(
+                "alter table index def ",
+                self.peek_token(),
+            )
+        }
+    }
+
+    pub fn parse_alter_add_index(&mut self) -> Result<AlterTableOperation, ParserError>{
+        let constraint = self.parse_alter_index_constraint()?;
+        let index_type = self.parse_alter_index_storge_type()?;
+        let index = self.parse_alter_index_def()?;
+        Ok(AlterTableOperation::AddIndex { index_def: IndexInfo{constraint, index_type, index} })
+    }
+
+    pub fn parse_alter_index_def(&mut self) -> Result<IndexDef, ParserError>{
+        if self.parse_keyword(Keyword::INDEX) || self.parse_keyword(Keyword::KEY) {
+            Ok(IndexDef::Normal(self.parse_alter_index_def_normal(false, false, false)?))
+        }else if self.parse_keyword(Keyword::PRIMARY) {
+            self.expect_keyword(Keyword::KEY)?;
+            Ok(IndexDef::PrimaryKey(self.parse_alter_index_def_primary(false)?))
+        }else if self.parse_keyword(Keyword::UNIQUE) {
+            Ok(IndexDef::Unique(self.parse_alter_index_def_normal(true, false, false)?))
+        }else if self.parse_keyword(Keyword::FOREIGN) {
+            Ok(IndexDef::ForeignKey(self.parse_alter_index_def_normal(false, true, false)?))
+        }else {
+            self.expected(
+                "alter table index def ",
+                self.peek_token(),
+            )
+        }
+    }
+
+
+    pub fn parse_alter_index_def_primary(&mut self, drop: bool) -> Result<MysqlIndex, ParserError> {
+        if drop{
+            Ok(
+                MysqlIndex{name:None, index_name:None, index_type: None, key_parts:None, index_option:None, fk_symbol:None}
+            )
+        }else {
+            let index_type = if self.parse_keyword(Keyword::USING){
+                Some(self.parse_identifier()?)
+            }else { None };
+            let key_parts = Some(self.parse_parenthesized_column_list(Mandatory)?);
+            let index_option = self.parse_alter_index_def_options()?;
+            let (name, index_name, fk_symbol) = (None, None, None);
+            Ok(
+                MysqlIndex{name, index_name, index_type, key_parts, index_option, fk_symbol}
+            )
+        }
+    }
+
+    pub fn parse_alter_index_def_normal(&mut self, unique: bool, foreign: bool, drop: bool) -> Result<MysqlIndex, ParserError> {
+        let name = if foreign{
+            self.expect_keyword(Keyword::KEY)?;
+            None
+        }else {
+            if !unique{
+                self.prev_token();
+            }
+            Some(self.parse_identifier()?)
+        };
+
+        let index_name = if !self.consume_token(&Token::LParen){
+            Some(self.parse_identifier()?)
+        }else {
+            self.prev_token();
+            None
+        };
+        let (index_type, key_parts, index_option, fk_symbol) = if drop{
+            if foreign{
+                (None, None, None, Some(self.parse_identifier()?))
+            }else {
+                (None, None, None, None)
+            }
+        }else {
+            let index_type = if unique {
+                if !self.consume_token(&Token::LParen){
+                    Some(self.parse_identifier()?)
+                }else {
+                    self.prev_token();
+                    None
+                }
+            } else {
+                None
+            };
+            let key_parts = Some(self.parse_parenthesized_column_list(Mandatory)?);
+            let index_option = self.parse_alter_index_def_options()?;
+            (index_type, key_parts, index_option, None)
+        };
+        Ok(
+            MysqlIndex{name, index_name, index_type, key_parts, index_option, fk_symbol}
+        )
+    }
+
+    pub fn parse_alter_index_def_options(&mut self) -> Result<Option<IndexOptions>, ParserError> {
+        if self.consume_token(&Token::Comma){
+            self.prev_token();
+            return Ok(None);
+        }
+        if self.consume_token(&Token::EOF) || self.consume_token(&Token::SemiColon){
+            return Ok(None)
+        }
+        if self.parse_keyword(Keyword::KEY_BLOCK_SIZE){
+            Ok(Some(IndexOptions::KeyBlockSize(self.parse_expr()?)))
+        } else if self.parse_keyword(Keyword::WITH) {
+            self.expect_keyword(Keyword::PARSER)?;
+            Ok(Some(IndexOptions::WithParser(self.parse_identifier()?)))
+        } else if self.parse_keyword(Keyword::USING) || self.parse_keyword(Keyword::COMMENT){
+            Ok(Some(IndexOptions::WithParser(self.parse_identifier()?)))
+        } else if self.parse_keyword(Keyword::REFERENCES) {
+            let table = self.parse_identifier()?;
+            let column = self.parse_parenthesized_column_list(Mandatory)?;
+            Ok(Some(IndexOptions::References {table, column}))
+        } else {
+            self.expected(
+                "alter table for index options ",
+                self.peek_token(),
+            )
+        }
+    }
+
+    pub fn parse_alter_index_constraint(&mut self) -> Result<Option<Ident>, ParserError>{
+        return if self.parse_keyword(Keyword::CONSTRAINT) {
+            Ok(Some(self.parse_identifier()?))
+        } else {
+            Ok(None)
+        };
+    }
+
+    pub fn parse_alter_index_storge_type(&mut self) -> Result<Option<MysqlIndexStorageType>, ParserError>{
+        return if self.parse_keyword(Keyword::FULLTEXT) {
+            Ok(Some(MysqlIndexStorageType::FullText))
+        } else if self.parse_keyword(Keyword::SPATIAL) {
+            Ok(Some(MysqlIndexStorageType::Spatial))
+        } else {
+            Ok(None)
         }
     }
 
@@ -1654,54 +1803,83 @@ impl Parser {
         self.expect_keyword(Keyword::TABLE)?;
         let _ = self.parse_keyword(Keyword::ONLY);
         let table_name = self.parse_object_name()?;
-        let operation = if self.parse_keyword(Keyword::ADD) ||
-            self.parse_keyword(Keyword::MODIFY){
-            if let Some(constraint) = self.parse_optional_table_constraint()? {
-                AlterTableOperation::AddConstraint(constraint)
-            } else {
-                let _ = self.parse_keyword(Keyword::COLUMN);
-                let column_def = self.parse_column_def()?;
-                AlterTableOperation::AddColumn { column_def }
+        let mut tmp = vec![];
+        loop {
+            if self.consume_token(&Token::EOF) || self.consume_token(&Token::SemiColon) {
+                break
             }
-        } else if self.parse_keyword(Keyword::CHANGE) {
-            let _ = self.parse_keyword(Keyword::COLUMN);
-            let old_column_name = self.parse_identifier()?;
-            let new_column_def = self.parse_column_def()?;
+            if self.consume_token(&Token::Comma){}
 
-            AlterTableOperation::ChangeColumn {
-                old_column_name,
-                new_column_def,
-            }
-        } else if self.parse_keyword(Keyword::RENAME) {
-            if self.parse_keyword(Keyword::TO) {
-                let table_name = self.parse_identifier()?;
-                AlterTableOperation::RenameTable { table_name }
-            } else {
+            let operation = if self.parse_keyword(Keyword::ADD) ||
+                self.parse_keyword(Keyword::MODIFY){
+                if !self.parse_keyword(Keyword::COLUMN){
+                    self.parse_alter_add_index()?
+                }else {
+                    //let _ = self.parse_keyword(Keyword::COLUMN);
+                    let column_def = self.parse_column_def()?;
+                    AlterTableOperation::AddColumn { column_def }
+                }
+
+                // if let Some(constraint) = self.parse_optional_table_constraint()? {
+                //     AlterTableOperation::AddConstraint(constraint)
+                // } else {
+                //     if !self.parse_keyword(Keyword::COLUMN){
+                //         self.parse_alter_add_index()?
+                //     }else {
+                //         //let _ = self.parse_keyword(Keyword::COLUMN);
+                //         let column_def = self.parse_column_def()?;
+                //         AlterTableOperation::AddColumn { column_def }
+                //     }
+                //
+                // }
+            } else if self.parse_keyword(Keyword::CHANGE) {
                 let _ = self.parse_keyword(Keyword::COLUMN);
                 let old_column_name = self.parse_identifier()?;
-                self.expect_keyword(Keyword::TO)?;
-                let new_column_name = self.parse_identifier()?;
-                AlterTableOperation::RenameColumn {
+                let new_column_def = self.parse_column_def()?;
+
+                AlterTableOperation::ChangeColumn {
                     old_column_name,
-                    new_column_name,
+                    new_column_def,
                 }
-            }
-        } else if self.parse_keyword(Keyword::DROP) {
-            let _ = self.parse_keyword(Keyword::COLUMN);
-            let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
-            let column_name = self.parse_identifier()?;
-            let cascade = self.parse_keyword(Keyword::CASCADE);
-            AlterTableOperation::DropColumn {
-                column_name,
-                if_exists,
-                cascade,
-            }
-        } else {
-            return self.expected("ADD, RENAME, or DROP after ALTER TABLE", self.peek_token());
-        };
+            } else if self.parse_keyword(Keyword::RENAME) {
+                if self.parse_keyword(Keyword::TO) {
+                    let table_name = self.parse_identifier()?;
+                    AlterTableOperation::RenameTable { table_name }
+                } else {
+                    let _ = self.parse_keyword(Keyword::COLUMN);
+                    let old_column_name = self.parse_identifier()?;
+                    self.expect_keyword(Keyword::TO)?;
+                    let new_column_name = self.parse_identifier()?;
+                    AlterTableOperation::RenameColumn {
+                        old_column_name,
+                        new_column_name,
+                    }
+                }
+            } else if self.parse_keyword(Keyword::DROP) {
+                if !self.parse_keyword(Keyword::COLUMN){
+                    AlterTableOperation::DropIndex { index_def: self.parse_alter_drop_index()? }
+                }else {
+                    //let _ = self.parse_keyword(Keyword::COLUMN);
+                    let if_exists = self.parse_keywords(&[Keyword::IF, Keyword::EXISTS]);
+                    let column_name = self.parse_identifier()?;
+                    let cascade = self.parse_keyword(Keyword::CASCADE);
+                    AlterTableOperation::DropColumn {
+                        column_name,
+                        if_exists,
+                        cascade,
+                    }
+                }
+
+            } else {
+                return self.expected("ADD, RENAME, or DROP after ALTER TABLE", self.peek_token());
+            };
+
+            tmp.push(operation)
+        }
+
         Ok(Statement::AlterTable {
             name: table_name,
-            operation,
+            operation: tmp,
         })
     }
 
