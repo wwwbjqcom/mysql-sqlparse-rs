@@ -1626,7 +1626,7 @@ impl Parser {
     pub fn parse_alter_index_def_primary(&mut self, drop: bool) -> Result<MysqlIndex, ParserError> {
         if drop{
             Ok(
-                MysqlIndex{name:None, index_name:None, index_type: None, key_parts:None, index_option:None, fk_symbol:None}
+                MysqlIndex{name:None, index_name:None, index_type: None, key_parts:None, index_option:None}
             )
         }else {
             let index_type = if self.parse_keyword(Keyword::USING){
@@ -1634,9 +1634,9 @@ impl Parser {
             }else { None };
             let key_parts = Some(self.parse_parenthesized_column_list(Mandatory)?);
             let index_option = self.parse_alter_index_def_options()?;
-            let (name, index_name, fk_symbol) = (None, None, None);
+            let (name, index_name) = (None, None);
             Ok(
-                MysqlIndex{name, index_name, index_type, key_parts, index_option, fk_symbol}
+                MysqlIndex{name, index_name, index_type, key_parts, index_option}
             )
         }
     }
@@ -1652,18 +1652,16 @@ impl Parser {
             Some(self.parse_identifier()?)
         };
 
+
         let index_name = if !self.consume_token(&Token::LParen){
             Some(self.parse_identifier()?)
         }else {
             self.prev_token();
             None
         };
-        let (index_type, key_parts, index_option, fk_symbol) = if drop{
-            if foreign{
-                (None, None, None, Some(self.parse_identifier()?))
-            }else {
-                (None, None, None, None)
-            }
+
+        let (index_type, key_parts, index_option) = if drop{
+            (None, None, None)
         }else {
             let index_type = if unique {
                 if !self.consume_token(&Token::LParen){
@@ -1677,10 +1675,10 @@ impl Parser {
             };
             let key_parts = Some(self.parse_parenthesized_column_list(Mandatory)?);
             let index_option = self.parse_alter_index_def_options()?;
-            (index_type, key_parts, index_option, None)
+            (index_type, key_parts, index_option)
         };
         Ok(
-            MysqlIndex{name, index_name, index_type, key_parts, index_option, fk_symbol}
+            MysqlIndex{name, index_name, index_type, key_parts, index_option}
         )
     }
 

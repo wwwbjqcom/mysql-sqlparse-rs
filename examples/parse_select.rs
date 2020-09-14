@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "alter table t1 add primary key(id), add index id_1(id) using btree, drop primary key, ADD FOREIGN KEY (s_cid) REFERENCES class(cid), add unique index(t1)";
+    let sql = "alter table t1 add primary key(id), add index id_1(id) using btree, drop foreign key aa, ADD FOREIGN KEY (s_cid) REFERENCES class(cid), add unique index(t1)";
     //let sql = "";
     let dialect = MySqlDialect {};
 

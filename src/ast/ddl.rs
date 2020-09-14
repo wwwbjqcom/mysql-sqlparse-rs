@@ -122,7 +122,6 @@ pub struct MysqlIndex{
     pub index_type: Option<Ident>,
     pub key_parts: Option<Vec<Ident>>,
     pub index_option: Option<IndexOptions>,
-    pub fk_symbol: Option<Ident>                        // only drop foreign index
 }
 impl fmt::Display for MysqlIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -140,9 +139,6 @@ impl fmt::Display for MysqlIndex {
         }
         if let Some(i) = &self.index_option{
             write!(f, " {}", i)?;
-        }
-        if let Some(fk) = &self.fk_symbol{
-            write!(f, " {}", fk)?;
         }
         write!(f, "")
     }
