@@ -1812,26 +1812,33 @@ impl Parser {
 
             let operation = if self.parse_keyword(Keyword::ADD) ||
                 self.parse_keyword(Keyword::MODIFY){
-                if !self.parse_keyword(Keyword::COLUMN){
-                    self.parse_alter_add_index()?
-                }else {
-                    //let _ = self.parse_keyword(Keyword::COLUMN);
-                    let column_def = self.parse_column_def()?;
-                    AlterTableOperation::AddColumn { column_def }
+                match self.dialect_type{
+                    DBType::MySql=>{
+                        if !self.parse_keyword(Keyword::COLUMN){
+                            self.parse_alter_add_index()?
+                        }else {
+                            //let _ = self.parse_keyword(Keyword::COLUMN);
+                            let column_def = self.parse_column_def()?;
+                            AlterTableOperation::AddColumn { column_def }
+                        }
+                    }
+                    _ => {
+                        if let Some(constraint) = self.parse_optional_table_constraint()? {
+                            AlterTableOperation::AddConstraint(constraint)
+                        } else {
+                            if !self.parse_keyword(Keyword::COLUMN){
+                                self.parse_alter_add_index()?
+                            }else {
+                                //let _ = self.parse_keyword(Keyword::COLUMN);
+                                let column_def = self.parse_column_def()?;
+                                AlterTableOperation::AddColumn { column_def }
+                            }
+
+                        }
+                    }
                 }
 
-                // if let Some(constraint) = self.parse_optional_table_constraint()? {
-                //     AlterTableOperation::AddConstraint(constraint)
-                // } else {
-                //     if !self.parse_keyword(Keyword::COLUMN){
-                //         self.parse_alter_add_index()?
-                //     }else {
-                //         //let _ = self.parse_keyword(Keyword::COLUMN);
-                //         let column_def = self.parse_column_def()?;
-                //         AlterTableOperation::AddColumn { column_def }
-                //     }
-                //
-                // }
+
             } else if self.parse_keyword(Keyword::CHANGE) {
                 let _ = self.parse_keyword(Keyword::COLUMN);
                 let old_column_name = self.parse_identifier()?;
