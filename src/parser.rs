@@ -1239,7 +1239,7 @@ impl Parser {
     pub fn parse_create_external_table(&mut self) -> Result<Statement, ParserError> {
         self.expect_keyword(Keyword::TABLE)?;
         let table_name = self.parse_object_name()?;
-        let (columns, constraints) = self.parse_columns()?;
+        let (columns, index, constraints) = self.parse_columns()?;
         self.expect_keywords(&[Keyword::STORED, Keyword::AS])?;
         let file_format = self.parse_file_format()?;
 
@@ -1249,6 +1249,7 @@ impl Parser {
         Ok(Statement::CreateTable {
             name: table_name,
             columns,
+            index,
             constraints,
             with_options: vec![],
             table_options: vec![],
@@ -1354,7 +1355,7 @@ impl Parser {
         let if_not_exists = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let table_name = self.parse_object_name()?;
         // parse optional column list (schema)
-        let (columns, constraints) = self.parse_columns()?;
+        let (columns,index, constraints) = self.parse_columns()?;
 
         // SQLite supports `WITHOUT ROWID` at the end of `CREATE TABLE`
         let without_rowid = self.parse_keywords(&[Keyword::WITHOUT, Keyword::ROWID]);
@@ -1372,6 +1373,7 @@ impl Parser {
         Ok(Statement::CreateTable {
             name: table_name,
             columns,
+            index,
             constraints,
             with_options,
             table_options,
@@ -1394,10 +1396,7 @@ impl Parser {
 
         let collation = if self.parse_keyword(Keyword::COLLATE) {
             Some(self.parse_object_name()?)
-        } else if self.parse_keyword(Keyword::AUTO_INCREMENT) {
-            self.prev_token();
-            Some(self.parse_object_name()?)
-        } else {
+        }  else {
             None
         };
         let mut options = vec![];
@@ -1415,38 +1414,78 @@ impl Parser {
         })
     }
 
-    fn parse_columns(&mut self) -> Result<(Vec<ColumnDef>, Vec<TableConstraint>), ParserError> {
+    fn parse_columns(&mut self) -> Result<(Vec<ColumnDef>, Vec<IndexInfo>, Vec<TableConstraint>), ParserError> {
         let mut columns = vec![];
+        let mut index = vec![];
         let mut constraints = vec![];
         if !self.consume_token(&Token::LParen) || self.consume_token(&Token::RParen) {
-            return Ok((columns, constraints));
+            return Ok((columns, index, constraints));
         }
 
         loop {
-            if let Some(constraint) = self.parse_optional_table_constraint()? {
-                constraints.push(constraint);
-            } else if let Token::Word(_) = self.peek_token() {
-                let column_def = self.parse_column_def()?;
-                columns.push(column_def);
-            } else {
-                return self.expected("column name or constraint definition", self.peek_token());
-            }
-            let comma = self.consume_token(&Token::Comma);
-            if self.consume_token(&Token::RParen) {
-                // allow a trailing comma, even though it's not in standard
-                break;
-            } else if !comma {
-                return self.expected("',' or ')' after column definition", self.peek_token());
+            match self.dialect_type{
+                DBType::MySql => {
+                    if let Token::Word(_) = self.peek_token() {
+                        if let Some(index_def) = self.parse_create_table_for_index()?{
+                            index.push(index_def);
+                        }else {
+                            let column_def = self.parse_column_def()?;
+                            columns.push(column_def);
+                        }
+                    }
+                    let comma = self.consume_token(&Token::Comma);
+                    if self.consume_token(&Token::RParen) {
+                        // allow a trailing comma, even though it's not in standard
+                        break;
+                    } else if !comma {
+                        return self.expected("',' or ')' after column definition", self.peek_token());
+                    }
+                }
+                _ => {
+                    if let Some(constraint) = self.parse_optional_table_constraint()? {
+                        constraints.push(constraint);
+                    } else if let Token::Word(_) = self.peek_token() {
+                        let column_def = self.parse_column_def()?;
+                        columns.push(column_def);
+                    } else {
+                        return self.expected("column name or constraint definition", self.peek_token());
+                    }
+                    let comma = self.consume_token(&Token::Comma);
+                    if self.consume_token(&Token::RParen) {
+                        // allow a trailing comma, even though it's not in standard
+                        break;
+                    } else if !comma {
+                        return self.expected("',' or ')' after column definition", self.peek_token());
+                    }
+                }
             }
         }
 
-        Ok((columns, constraints))
+        Ok((columns, index, constraints))
+    }
+
+    fn parse_create_table_for_index(&mut self) -> Result<Option<IndexInfo>, ParserError>{
+        let keyword_list = [Keyword::KEY, Keyword::INDEX, Keyword::PRIMARY,
+            Keyword::UNIQUE, Keyword::FOREIGN, Keyword::FULLTEXT, Keyword::CONSTRAINT];
+        return if let Some(_k) = self.parse_one_of_keywords(&keyword_list){
+            self.prev_token();
+            let constraint = self.parse_alter_index_constraint()?;
+            let index_type = self.parse_alter_index_storge_type()?;
+            let index = self.parse_alter_index_def()?;
+            Ok(Some(IndexInfo{
+                constraint,
+                index_type,
+                index
+            }))
+        }else {
+            Ok(None)
+        }
     }
 
     pub fn parse_table_options(&mut self) -> Result<Vec<TableOptionDef>, ParserError>{
         let mut table_options = vec![];
         loop{
-            if self.consume_token(&Token::EOF){
+            if self.consume_token(&Token::EOF) || self.consume_token(&Token::SemiColon){
                 break
             }
             table_options.push(self.parse_table_option_def()?);
@@ -1506,6 +1545,8 @@ impl Parser {
 
         let option = if self.parse_keywords(&[Keyword::NOT, Keyword::NULL]) {
             ColumnOption::NotNull
+        } else if self.parse_keyword(Keyword::AUTO_INCREMENT){
+            ColumnOption::AutoIncrement
         } else if self.parse_keyword(Keyword::NULL) {
             ColumnOption::Null
         } else if self.parse_keyword(Keyword::COMMENT) {
@@ -1659,7 +1700,6 @@ impl Parser {
             self.prev_token();
             None
         };
-
         let (index_type, key_parts, index_option) = if drop{
             (None, None, None)
         }else {
@@ -1683,7 +1723,7 @@ impl Parser {
     }
 
     pub fn parse_alter_index_def_options(&mut self) -> Result<Option<IndexOptions>, ParserError> {
-        if self.consume_token(&Token::Comma){
+        if self.consume_token(&Token::Comma) || self.consume_token(&Token::RParen) {
             self.prev_token();
             return Ok(None);
         }
@@ -1695,9 +1735,12 @@ impl Parser {
         } else if self.parse_keyword(Keyword::WITH) {
             self.expect_keyword(Keyword::PARSER)?;
             Ok(Some(IndexOptions::WithParser(self.parse_identifier()?)))
-        } else if self.parse_keyword(Keyword::USING) || self.parse_keyword(Keyword::COMMENT){
-            Ok(Some(IndexOptions::WithParser(self.parse_identifier()?)))
-        } else if self.parse_keyword(Keyword::REFERENCES) {
+        } else if self.parse_keyword(Keyword::USING) {
+            Ok(Some(IndexOptions::IndexType(self.parse_identifier()?)))
+        } else if self.parse_keyword(Keyword::COMMENT) {
+            Ok(Some(IndexOptions::Comment(self.parse_expr()?)))
+        }
+        else if self.parse_keyword(Keyword::REFERENCES) {
             let table = self.parse_identifier()?;
             let column = self.parse_parenthesized_column_list(Mandatory)?;
             Ok(Some(IndexOptions::References {table, column}))

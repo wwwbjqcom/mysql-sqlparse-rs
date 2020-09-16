@@ -543,6 +543,7 @@ pub enum Statement {
         name: ObjectName,
         /// Optional schema
         columns: Vec<ColumnDef>,
+        index: Vec<IndexInfo>,
         constraints: Vec<TableConstraint>,
         with_options: Vec<SqlOption>,
         table_options: Vec<TableOptionDef>,
@@ -784,7 +785,7 @@ impl fmt::Display for Statement {
             Statement::CreateTable {
                 name,
                 columns,
-                constraints,
+                index, constraints,
                 with_options,
                 table_options, if_not_exists,
                 external,
@@ -812,6 +813,11 @@ impl fmt::Display for Statement {
                     if !columns.is_empty() && !constraints.is_empty() {
                         write!(f, ", ")?;
                     }
+
+                    if !index.is_empty(){
+                        write!(f, ", {}", display_comma_separated(index))?;
+                    }
+
                     write!(f, "{})", display_comma_separated(constraints))?;
                 } else if query.is_none() {
                     // PostgreSQL allows `CREATE TABLE t ();`, but requires empty parens

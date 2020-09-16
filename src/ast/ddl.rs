@@ -106,7 +106,7 @@ impl fmt::Display for IndexOptions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self{
             IndexOptions::KeyBlockSize(expr) => write!(f, "KEY_BLOCK_SIZE {}", expr),
-            IndexOptions::IndexType(t) => write!(f, "{}", t),
+            IndexOptions::IndexType(t) => write!(f, "USING {}", t),
             IndexOptions::WithParser(i) => write!(f, "WITH PARSER {}", i),
             IndexOptions::Comment(e) => write!(f, "COMMENT {}", e),
             IndexOptions::References { table, column } => write!(f, "REFERENCES {}({})", table,display_comma_separated(column))
@@ -321,9 +321,9 @@ pub struct TableOptionDef {
 impl fmt::Display for TableOptionDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(v) = &self.name{
-            write!(f, "{} ", v)?;
+            write!(f, " {} ", v)?;
         }
-        write!(f, "{}", self.option)
+        write!(f, " {}", self.option)
     }
 }
 
@@ -393,6 +393,7 @@ pub enum ColumnOption {
     Null,
     /// `NOT NULL`
     NotNull,
+    AutoIncrement,
     /// `DEFAULT <restricted-expr>`
     Default(Expr),
     /// `{ PRIMARY KEY | UNIQUE }`
@@ -424,6 +425,7 @@ impl fmt::Display for ColumnOption {
         match self {
             Null => write!(f, "NULL"),
             NotNull => write!(f, "NOT NULL"),
+            AutoIncrement => write!(f, "AUTO_INCREMENT"),
             Default(expr) => write!(f, "DEFAULT {}", expr),
             Unique { is_primary } => {
                 write!(f, "{}", if *is_primary { "PRIMARY KEY" } else { "UNIQUE" })

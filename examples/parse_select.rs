@@ -16,7 +16,14 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "alter table t1 add primary key(id), add index id_1(id) using btree, drop foreign key aa, ADD FOREIGN KEY (s_cid) REFERENCES class(cid), add unique index(t1)";
+    let sql = "CREATE TABLE user_proxy_code (
+  id int NOT NULL AUTO_INCREMENT,
+  user_id int NOT NULL COMMENT '用户的ID',
+  proxy_code int DEFAULT NULL COMMENT '邀请人ID',
+  date int DEFAULT NULL COMMENT '时间',
+  PRIMARY KEY (id) USING BTREE,
+  KEY index_user_id (user_id) comment 'abc'
+) ENGINE=InnoDB AUTO_INCREMENT=239 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
     //let sql = "";
     let dialect = MySqlDialect {};
 
