@@ -16,7 +16,7 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "select /*b*/ 1 from t1";
+    let sql = "update /*force_master*/  t1 set a = 1";
     //let sql = "";
     let dialect = MySqlDialect {};
 

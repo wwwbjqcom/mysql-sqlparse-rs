@@ -999,10 +999,7 @@ impl Parser {
         loop {
             index += 1;
             match self.tokens.get(index - 1) {
-                Some(Token::Whitespace(Whitespace::SingleLineComment(_))) => continue,
-                Some(Token::Whitespace(Whitespace::Space)) => continue,
-                Some(Token::Whitespace(Whitespace::Newline)) => continue,
-                Some(Token::Whitespace(Whitespace::Tab)) => continue,
+                Some(Token::Whitespace(_)) => continue,
                 non_whitespace => {
                     if n == 0 {
                         return non_whitespace.cloned().unwrap_or(Token::EOF);
@@ -1017,6 +1014,19 @@ impl Parser {
     /// (or None if reached end-of-file) and mark it as processed. OK to call
     /// repeatedly after reaching EOF.
     pub fn next_token(&mut self) -> Token {
+        loop {
+            self.index += 1;
+            match self.tokens.get(self.index - 1) {
+                Some(Token::Whitespace(_)) => continue,
+                token => return token.cloned().unwrap_or(Token::EOF),
+            }
+        }
+    }
+
+    /// Return the first non-whitespace token that has not yet been processed
+    /// (or None if reached end-of-file) and mark it as processed. OK to call
+    /// repeatedly after reaching EOF.
+    pub fn next_token_no_ignore_comment(&mut self) -> Token {
         loop {
             self.index += 1;
             match self.tokens.get(self.index - 1) {
@@ -2432,7 +2442,7 @@ impl Parser {
     }
 
     fn parse_comment_for_select(&mut self) -> Result<Option<Ident>, ParserError>{
-        match self.next_token(){
+        match self.next_token_no_ignore_comment(){
             Token::Whitespace(Whitespace::MultiLineComment(v)) => {
                 Ok(Some(Ident{ value: v.clone(), quote_style: None }))
             }
