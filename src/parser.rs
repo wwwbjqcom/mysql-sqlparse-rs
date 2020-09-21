@@ -133,7 +133,7 @@ impl Parser {
     /// Parse a single top-level statement (such as SELECT, INSERT, CREATE, etc.),
     /// stopping before the statement separator, if any.
     pub fn parse_statement(&mut self) -> Result<Statement, ParserError> {
-        // println!("{:?}", &self.tokens);
+        //println!("{:?}", self.peek_token());
         match self.next_token() {
             Token::Word(w) => match w.keyword {
                 Keyword::SELECT | Keyword::WITH | Keyword::VALUES => {
@@ -999,7 +999,10 @@ impl Parser {
         loop {
             index += 1;
             match self.tokens.get(index - 1) {
-                Some(Token::Whitespace(_)) => continue,
+                Some(Token::Whitespace(Whitespace::SingleLineComment(_))) => continue,
+                Some(Token::Whitespace(Whitespace::Space)) => continue,
+                Some(Token::Whitespace(Whitespace::Newline)) => continue,
+                Some(Token::Whitespace(Whitespace::Tab)) => continue,
                 non_whitespace => {
                     if n == 0 {
                         return non_whitespace.cloned().unwrap_or(Token::EOF);
@@ -1017,7 +1020,10 @@ impl Parser {
         loop {
             self.index += 1;
             match self.tokens.get(self.index - 1) {
-                Some(Token::Whitespace(_)) => continue,
+                Some(Token::Whitespace(Whitespace::SingleLineComment(_))) => continue,
+                Some(Token::Whitespace(Whitespace::Space)) => continue,
+                Some(Token::Whitespace(Whitespace::Newline)) => continue,
+                Some(Token::Whitespace(Whitespace::Tab)) => continue,
                 token => return token.cloned().unwrap_or(Token::EOF),
             }
         }
@@ -2372,6 +2378,7 @@ impl Parser {
     /// Parse a restricted `SELECT` statement (no CTEs / `UNION` / `ORDER BY`),
     /// assuming the initial `SELECT` was already consumed
     pub fn parse_select(&mut self) -> Result<Select, ParserError> {
+        let comment = self.parse_comment_for_select()?;
         let distinct = self.parse_all_or_distinct()?;
 
         let top = if self.parse_keyword(Keyword::TOP) {
@@ -2413,6 +2420,7 @@ impl Parser {
         };
 
         Ok(Select {
+            comment,
             distinct,
             top,
             projection,
@@ -2421,6 +2429,18 @@ impl Parser {
             group_by,
             having,
         })
+    }
+
+    fn parse_comment_for_select(&mut self) -> Result<Option<Ident>, ParserError>{
+        match self.next_token(){
+            Token::Whitespace(Whitespace::MultiLineComment(v)) => {
+                Ok(Some(Ident{ value: v.clone(), quote_style: None }))
+            }
+            _ => {
+                self.prev_token();
+                Ok(None)
+            }
+        }
     }
 
     pub fn parse_set(&mut self) -> Result<Statement, ParserError> {

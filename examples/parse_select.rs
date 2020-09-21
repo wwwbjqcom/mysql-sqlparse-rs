@@ -16,19 +16,12 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "CREATE TABLE user_proxy_code (
-  id int NOT NULL AUTO_INCREMENT,
-  user_id int NOT NULL COMMENT '用户的ID',
-  proxy_code int DEFAULT NULL COMMENT '邀请人ID',
-  date int DEFAULT NULL COMMENT '时间',
-  PRIMARY KEY (id) USING BTREE,
-  KEY index_user_id (user_id) comment 'abc'
-) ENGINE=InnoDB AUTO_INCREMENT=239 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+    let sql = "select /*b*/ 1 from t1";
     //let sql = "";
     let dialect = MySqlDialect {};
 
     let ast = Parser::parse_sql(&dialect, sql).unwrap();
 
-    println!("AST: {:?}", ast[0].to_string());
+    println!("AST: {:?}", ast);
 
 }

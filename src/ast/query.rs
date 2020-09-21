@@ -134,6 +134,9 @@ impl fmt::Display for SetOperator {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Select {
+    /// comment /*...*/
+    pub comment: Option<Ident>,
+    ///
     pub distinct: bool,
     /// MSSQL syntax: `TOP (<N>) [ PERCENT ] [ WITH TIES ]`
     pub top: Option<Top>,
@@ -151,7 +154,11 @@ pub struct Select {
 
 impl fmt::Display for Select {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SELECT{}", if self.distinct { " DISTINCT" } else { "" })?;
+        write!(f, "SELECT")?;
+        if let Some(c) = &self.comment{
+            write!(f, " /*{}*/", c)?;
+        }
+        write!(f, "{}", if self.distinct { " DISTINCT" } else { "" })?;
         if let Some(ref top) = self.top {
             write!(f, " {}", top)?;
         }
