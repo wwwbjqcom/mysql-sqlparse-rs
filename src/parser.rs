@@ -483,11 +483,11 @@ impl Parser {
             | Token::SingleQuotedString(_)
             | Token::NationalStringLiteral(_)
             | Token::HexStringLiteral(_)
-            | Token::VariableString(_) => {
+            | Token::VariableString(_)
+            | Token::Char(_) => {
                 self.prev_token();
                 Ok(Expr::Value(self.parse_value()?))
             }
-
             Token::LParen => {
                 let expr =
                     if self.parse_keyword(Keyword::SELECT) || self.parse_keyword(Keyword::WITH) {
@@ -2019,6 +2019,7 @@ impl Parser {
             Token::NationalStringLiteral(ref s) => Ok(Value::NationalStringLiteral(s.to_string())),
             Token::HexStringLiteral(ref s) => Ok(Value::HexStringLiteral(s.to_string())),
             Token::VariableString(ref v) => Ok(Value::VariableName(v.to_string())),
+            Token::Char(ref c) => Ok(Value::Char(*c)),
             unexpected => self.expected("a value", unexpected),
         }
     }
@@ -2444,7 +2445,7 @@ impl Parser {
     fn parse_comment_for_select(&mut self) -> Result<Option<Ident>, ParserError>{
         match self.next_token_no_ignore_comment(){
             Token::Whitespace(Whitespace::MultiLineComment(v)) => {
-                Ok(Some(Ident{ value: v.clone(), quote_style: None }))
+                Ok(Some(Ident{ value: v.clone().replace(" ",""), quote_style: None }))
             }
             _ => {
                 self.prev_token();

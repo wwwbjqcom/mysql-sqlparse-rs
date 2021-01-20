@@ -31,6 +31,8 @@ pub enum Value {
     NationalStringLiteral(String),
     /// Environment variable name
     VariableName(String),
+    /// one char for ?
+    Char(char),
     /// X'hex value'
     HexStringLiteral(String),
     /// Boolean value true or false
@@ -67,6 +69,7 @@ impl fmt::Display for Value {
             Value::HexStringLiteral(v) => write!(f, "X'{}'", v),
             Value::Boolean(v) => write!(f, "{}", v),
             Value::VariableName(v) => write!(f, "{}", v),
+            Value::Char(c) => write!(f, "{}", c),
             Value::Interval {
                 value,
                 leading_field: Some(DateTimeField::Second),
