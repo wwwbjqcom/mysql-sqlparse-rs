@@ -2343,9 +2343,12 @@ impl Parser {
             let subquery = self.parse_query()?;
             self.expect_token(&Token::RParen)?;
             SetExpr::Query(Box::new(subquery))
-        } else if self.parse_keyword(Keyword::VALUES) {
+        } else if self.parse_keyword(Keyword::VALUES)  {
             SetExpr::Values(self.parse_values()?)
-        } else {
+        } else if self.parse_keyword(Keyword::VALUE) {
+            SetExpr::Value(self.parse_values()?)
+        }
+        else {
             return self.expected(
                 "SELECT, VALUES, or a subquery in the query body",
                 self.peek_token(),
@@ -2942,6 +2945,7 @@ impl Parser {
         })?;
         Ok(Values(values))
     }
+
 
     pub fn parse_start_transaction(&mut self) -> Result<Statement, ParserError> {
         self.expect_keyword(Keyword::TRANSACTION)?;
