@@ -987,7 +987,7 @@ impl fmt::Display for Statement {
                 Ok(())
             }
             Statement::ChangeDatabase { database } => {
-                write!(f, "USE DATABASE{}", database)
+                write!(f, "USE {}", database)
             }
             Statement::AdminSetVariable { variable, value, selection } => {
                 write!(f, "SET {} = {}", variable, value)?;
