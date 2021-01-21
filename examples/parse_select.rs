@@ -16,12 +16,16 @@ use sqlparser::dialect::MySqlDialect;
 use sqlparser::parser::*;
 
 fn main() {
-    let sql = "update /*force_master*/  t1 set a = 1";
+    // let sql = "insert into tbl_activeuser_trace(minute, count) value(?, ?)";
+    // let sql = "insert into tbl_activeuser_trace(id, id1) values(?,?),(?,?)";
+    // let sql = "update t1 set a = ? where b = ?";
+    let sql = "insert a(id) value(1)";
     //let sql = "";
     let dialect = MySqlDialect {};
 
     let ast = Parser::parse_sql(&dialect, sql).unwrap();
-
     println!("AST: {:?}", ast);
-
+    for i in ast{
+        println!("{:?}", i.to_string());
+    }
 }

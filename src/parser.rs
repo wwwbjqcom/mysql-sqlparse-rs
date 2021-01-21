@@ -2758,7 +2758,7 @@ impl Parser {
 
     /// Parse an INSERT statement
     pub fn parse_insert(&mut self) -> Result<Statement, ParserError> {
-        self.expect_keyword(Keyword::INTO)?;
+        //self.expect_keyword(Keyword::INTO)?;
         let table_name = self.parse_object_name()?;
         let columns = self.parse_parenthesized_column_list(Optional)?;
         let source = Box::new(self.parse_query()?);
