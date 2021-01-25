@@ -393,6 +393,7 @@ pub enum ColumnOption {
     Null,
     /// `NOT NULL`
     NotNull,
+    Unsigned,
     AutoIncrement,
     /// `DEFAULT <restricted-expr>`
     Default(Expr),
@@ -425,6 +426,7 @@ impl fmt::Display for ColumnOption {
         match self {
             Null => write!(f, "NULL"),
             NotNull => write!(f, "NOT NULL"),
+            Unsigned => write!(f, "UNSIGNED"),
             AutoIncrement => write!(f, "AUTO_INCREMENT"),
             Default(expr) => write!(f, "DEFAULT {}", expr),
             Unique { is_primary } => {

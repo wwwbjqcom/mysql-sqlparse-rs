@@ -1565,6 +1565,8 @@ impl Parser {
             ColumnOption::AutoIncrement
         } else if self.parse_keyword(Keyword::NULL) {
             ColumnOption::Null
+        } else if self.parse_keyword(Keyword::UNSIGNED) {
+            ColumnOption::Unsigned
         } else if self.parse_keyword(Keyword::COMMENT) {
             ColumnOption::Comment(self.parse_expr()?)
         } else if self.parse_keyword(Keyword::AFTER) {

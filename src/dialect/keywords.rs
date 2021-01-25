@@ -448,6 +448,7 @@ define_keywords!(
     UNKNOWN,
     UNLOCK,
     UNNEST,
+    UNSIGNED,
     UPDATE,
     UPPER,
     USE,
