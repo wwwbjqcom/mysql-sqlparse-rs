@@ -17,9 +17,10 @@ use sqlparser::parser::*;
 
 fn main() {
     // let sql = "insert into tbl_activeuser_trace(minute, count) value(?, ?)";
-    // let sql = "insert into tbl_activeuser_trace(id, id1) values(?,?),(?,?)";
+    let sql = " INSERT INTO aa (user_id, level, state, payid, bgn_time, end_time, auto_pay) VALUES (123,1,2,3, current_date(), current_date(), true)
+    ON DUPLICATE KEY UPDATE level = 1, state = 2, payid = 2222423423, bgn_time = current_date(), end_time = current_date(), auto_pay = true ;";
     // let sql = "update t1 set a = ? where b = ?";
-    let sql = "insert a(id) value(1)";
+    // let sql = "use a";
     //let sql = "";
     let dialect = MySqlDialect {};
 

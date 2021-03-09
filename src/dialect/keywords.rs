@@ -176,6 +176,7 @@ define_keywords!(
     DISTINCT,
     DOUBLE,
     DROP,
+    DUPLICATE,
     DYNAMIC,
     EACH,
     ELEMENT,

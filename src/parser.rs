@@ -2382,6 +2382,26 @@ impl Parser {
         Ok(expr)
     }
 
+    fn parse_on_duplicate_key_update(&mut self) -> Result<bool, ParserError> {
+        if self.parse_keyword(Keyword::ON){
+            if self.parse_keyword(Keyword::DUPLICATE){
+                if self.parse_keyword(Keyword::KEY){
+                    if self.parse_keyword(Keyword::UPDATE){
+                        return Ok(true);
+                    }else {
+                        self.expected("on duplicate key update error", self.peek_token())
+                    }
+                }else {
+                    self.expected("on duplicate key update error", self.peek_token())
+                }
+            }else {
+                self.expected("on duplicate key update error", self.peek_token())
+            }
+        }else {
+            return Ok(false)
+        }
+    }
+
     fn parse_set_operator(&mut self, token: &Token) -> Option<SetOperator> {
         match token {
             Token::Word(w) if w.keyword == Keyword::UNION => Some(SetOperator::Union),
@@ -2764,10 +2784,16 @@ impl Parser {
         let table_name = self.parse_object_name()?;
         let columns = self.parse_parenthesized_column_list(Optional)?;
         let source = Box::new(self.parse_query()?);
+        let update = if self.parse_on_duplicate_key_update()? {
+            Some(self.parse_comma_separated(Parser::parse_assignment)?)
+        }else {
+            None
+        };
         Ok(Statement::Insert {
             table_name,
             columns,
             source,
+            update
         })
     }
 

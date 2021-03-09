@@ -493,6 +493,8 @@ pub enum Statement {
         columns: Vec<Ident>,
         /// A SQL query that specifies what to insert
         source: Box<Query>,
+        /// ON DUPLICATE KEY UPDATE
+        update: Option<Vec<Assignment>>,
     },
     /// REPLACE
     Replace {
@@ -689,13 +691,17 @@ impl fmt::Display for Statement {
             Statement::Insert {
                 table_name,
                 columns,
-                source,
+                source, update,
             } => {
                 write!(f, "INSERT INTO {} ", table_name)?;
                 if !columns.is_empty() {
                     write!(f, "({}) ", display_comma_separated(columns))?;
                 }
-                write!(f, "{}", source)
+                write!(f, "{}", source)?;
+                if let Some(update) = update {
+                    write!(f, " ON DUPLICATE KEY UPDATE {}", display_comma_separated(update))?;
+                }
+                Ok(())
             }
             Statement::Replace {
                 table_name,
