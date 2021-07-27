@@ -610,6 +610,12 @@ pub enum Statement {
         selection: Option<Expr>,
     },
 
+    /// 用户reload config/user [platfrom=aa]
+    ReLoad{
+        variable: Ident,
+        selection: Option<Expr>,
+    },
+
     /// SHOW <variable>
     ///
     /// Note: this is a PostgreSQL-specific statement.
@@ -923,7 +929,17 @@ impl fmt::Display for Statement {
                     f.write_str("LOCAL ")?;
                 }
                 write!(f, "{} = {}", variable, value)
-            }
+            },
+            Statement::ReLoad { variable, selection } => {
+                if let Some(selection) = selection {
+                    write!(f, "RELOAD USER")?;
+                    write!(f, " WHERE {}", selection)?;
+
+                }else {
+                    write!(f, "RELOAD CONFIG")?;
+                }
+                Ok(())
+            },
             Statement::ShowVariable { variable, global, selection } => {
                 write!(f, "SHOW {} {}", if *global {"GLOBAL"} else {""}, variable )?;
                 if let Some(selection) = selection {

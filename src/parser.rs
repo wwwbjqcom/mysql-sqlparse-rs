@@ -147,6 +147,7 @@ impl Parser {
                 Keyword::DELETE => Ok(self.parse_delete()?),
                 Keyword::INSERT => Ok(self.parse_insert()?),
                 Keyword::REPLACE => Ok(self.parse_insert()?),
+                Keyword::RELOAD => Ok(self.parse_reload()?),
                 Keyword::UPDATE => Ok(self.parse_update()?),
                 Keyword::ALTER => Ok(self.parse_alter()?),
                 Keyword::COPY => Ok(self.parse_copy()?),
@@ -173,6 +174,7 @@ impl Parser {
             unexpected => self.expected("an SQL statement", unexpected),
         }
     }
+
 
     pub fn parse_explain(&mut self) -> Result<Statement, ParserError>{
         let analyze = self.parse_explain_analyze()?;
@@ -2475,6 +2477,53 @@ impl Parser {
             _ => {
                 self.prev_token();
                 Ok(None)
+            }
+        }
+    }
+
+    pub fn parse_reload(&mut self) -> Result<Statement, ParserError>{
+        return match self.next_token() {
+            Token::Word(w) => match w.keyword {
+                Keyword::CONFIG => {
+                    self.prev_token();
+                    let variable = self.parse_identifier()?;
+                    if self.consume_token(&Token::EOF) {
+                        Ok(Statement::ReLoad {
+                            variable,
+                            selection: None
+                        })
+                    } else {
+                        self.expected("reload config does not support parameters", self.peek_token())
+                    }
+                }
+                Keyword::USER => {
+                    self.prev_token();
+                    let variable = self.parse_identifier()?;
+                    if !self.consume_token(&Token::EOF) {
+                        let selection = if self.parse_keyword(Keyword::WHERE) {
+                            Some(self.parse_expr()?)
+                        } else {
+                            None
+                        };
+                        Ok(Statement::ReLoad {
+                            variable,
+                            selection
+                        })
+                    } else {
+                        Ok(Statement::ReLoad {
+                            variable,
+                            selection: None
+                        })
+                    }
+                }
+                _ => {
+                    self.prev_token();
+                    self.expected("reload only support config and user privileges", self.peek_token())
+                }
+            },
+            _ => {
+                self.prev_token();
+                self.expected("reload only support config and user privileges", self.peek_token())
             }
         }
     }
