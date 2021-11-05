@@ -17,7 +17,8 @@ use sqlparser::parser::*;
 
 fn main() {
     // let sql = "insert into tbl_activeuser_trace(minute, count) value(?, ?)";
-    let sql = " reload user where platform='abc' and host = '123'";
+
+    let sql = "SELECT * FROM user_care_list WHERE user_id = ? ORDER BY cared_at DESC limit ?,?";
     // let sql = "update t1 set a = ? where b = ?";
     // let sql = "use a";
     //let sql = "";

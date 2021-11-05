@@ -2031,6 +2031,14 @@ impl Parser {
     pub fn parse_number_value(&mut self) -> Result<Value, ParserError> {
         match self.parse_value()? {
             v @ Value::Number(_) => Ok(v),
+            v @ Value::Char(_) => {
+                if v == Value::Char('?'){
+                    Ok(v)
+                }else {
+                    self.prev_token();
+                    self.expected("literal number", self.peek_token())
+                }
+            }
             _ => {
                 self.prev_token();
                 self.expected("literal number", self.peek_token())
