@@ -247,6 +247,7 @@ pub enum TableFactor {
     Table {
         name: ObjectName,
         alias: Option<TableAlias>,
+        force: Option<Ident>,
         /// Arguments of a table-valued function, as supported by Postgres
         /// and MSSQL. Note that deprecated MSSQL `FROM foo (NOLOCK)` syntax
         /// will also be parsed as `args`.
@@ -273,6 +274,7 @@ impl fmt::Display for TableFactor {
             TableFactor::Table {
                 name,
                 alias,
+                force,
                 args,
                 with_hints,
             } => {
@@ -282,6 +284,9 @@ impl fmt::Display for TableFactor {
                 }
                 if let Some(alias) = alias {
                     write!(f, " AS {}", alias)?;
+                }
+                if let Some(force) = force {
+                    write!(f, " FORCE INDEX({})", force)?;
                 }
                 if !with_hints.is_empty() {
                     write!(f, " WITH ({})", display_comma_separated(with_hints))?;

@@ -210,6 +210,7 @@ define_keywords!(
     FLOOR,
     FOLLOWING,
     FOR,
+    FORCE,
     FOREIGN,
     FORMAT,
     FRAME_ROW,

@@ -18,7 +18,7 @@ use sqlparser::parser::*;
 fn main() {
     // let sql = "insert into tbl_activeuser_trace(minute, count) value(?, ?)";
 
-    let sql = "SELECT * FROM user_care_list WHERE user_id = ? ORDER BY cared_at DESC limit ?,?";
+    let sql = "select * from super_chat_participants abc force index(idx_channel_id_user_id) where channel_id = ? order by user_id desc limit ?,?";
     // let sql = "update t1 set a = ? where b = ?";
     // let sql = "use a";
     //let sql = "";

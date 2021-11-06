@@ -2477,6 +2477,18 @@ impl Parser {
         })
     }
 
+    fn parse_force_for_select(&mut self) -> Result<Ident, ParserError>{
+        if self.parse_keyword(Keyword::INDEX){
+            self.expect_token(&Token::LParen)?;
+            let force = self.parse_identifier()?;
+            self.expect_token(&Token::RParen)?;
+            Ok(force)
+        }else {
+            self.expected("an error in your SQL syntax,force index {}", self.peek_token())
+        }
+
+    }
+
     fn parse_comment_for_select(&mut self) -> Result<Option<Ident>, ParserError>{
         match self.next_token_no_ignore_comment(){
             Token::Whitespace(Whitespace::MultiLineComment(v)) => {
@@ -2663,6 +2675,10 @@ impl Parser {
         // a table alias.
         let mut joins = vec![];
         loop {
+            // if self.parse_keyword(Keyword::FORCE){
+            //     self.prev_token();
+            //     break;
+            // }
             let join = if self.parse_keyword(Keyword::CROSS) {
                 let join_operator = if self.parse_keyword(Keyword::JOIN) {
                     JoinOperator::CrossJoin
@@ -2783,7 +2799,17 @@ impl Parser {
             } else {
                 vec![]
             };
+            // mysql force index
+            let mut force = None;
+            if self.parse_keyword(Keyword::FORCE){
+                force = Some(self.parse_force_for_select()?);
+            }
             let alias = self.parse_optional_table_alias(keywords::RESERVED_FOR_TABLE_ALIAS)?;
+
+            // mysql force index agin
+            if self.parse_keyword(Keyword::FORCE){
+                force = Some(self.parse_force_for_select()?);
+            }
             // MSSQL-specific table hints:
             let mut with_hints = vec![];
             if self.parse_keyword(Keyword::WITH) {
@@ -2798,6 +2824,7 @@ impl Parser {
             Ok(TableFactor::Table {
                 name,
                 alias,
+                force,
                 args,
                 with_hints,
             })
