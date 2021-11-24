@@ -29,6 +29,8 @@ pub struct Query {
     pub limit: Option<Expr>,
     /// `OFFSET <N> [ { ROW | ROWS } ]`
     pub offset: Option<Offset>,
+    /// `FOR UPDATE`
+    pub update: bool,
     /// `FETCH { FIRST | NEXT } <N> [ PERCENT ] { ROW | ROWS } | { ONLY | WITH TIES }`
     pub fetch: Option<Fetch>,
 }
@@ -47,6 +49,9 @@ impl fmt::Display for Query {
         }
         if let Some(ref offset) = self.offset {
             write!(f, " {}", offset)?;
+        }
+        if self.update{
+            write!(f, " FOR UPDATE")?;
         }
         if let Some(ref fetch) = self.fetch {
             write!(f, " {}", fetch)?;

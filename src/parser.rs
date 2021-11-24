@@ -2302,11 +2302,18 @@ impl Parser {
             (None,None)
         };
 
+        let update = if self.parse_keyword(Keyword::FOR){
+            self.expect_keyword(Keyword::UPDATE)?;
+            true
+        }else {
+            false
+        };
         // let offset = if self.parse_keyword(Keyword::OFFSET) {
         //     Some(self.parse_offset()?)
         // } else {
         //     None
         // };
+
 
         let fetch = if self.parse_keyword(Keyword::FETCH) {
             Some(self.parse_fetch()?)
@@ -2320,6 +2327,7 @@ impl Parser {
             limit,
             order_by,
             offset,
+            update,
             fetch,
         })
     }
