@@ -98,6 +98,12 @@ pub enum Token {
     LBrace,
     /// Right brace `}`
     RBrace,
+    /// Bitwise inversion `~`
+    Negate,
+    /// Right Displacement `>>`
+    RDisplacement,
+    /// Left Displacement `<<`
+    LDisplacement
 }
 
 impl fmt::Display for Token {
@@ -139,6 +145,9 @@ impl fmt::Display for Token {
             Token::Pipe => f.write_str("|"),
             Token::LBrace => f.write_str("{"),
             Token::RBrace => f.write_str("}"),
+            Token::Negate => f.write_str("~"),
+            Token::LDisplacement => f.write_str("<<"),
+            Token::RDisplacement => f.write_str(">>"),
         }
     }
 }
@@ -426,6 +435,7 @@ impl<'a> Tokenizer<'a> {
                 }
                 '=' => self.consume_and_return(chars, Token::Eq),
                 '.' => self.consume_and_return(chars, Token::Period),
+                '~' => self.consume_and_return(chars, Token::Negate),
                 '!' => {
                     chars.next(); // consume
                     match chars.peek() {
@@ -438,6 +448,7 @@ impl<'a> Tokenizer<'a> {
                     match chars.peek() {
                         Some('=') => self.consume_and_return(chars, Token::LtEq),
                         Some('>') => self.consume_and_return(chars, Token::Neq),
+                        Some('<') => self.consume_and_return(chars, Token::LDisplacement),
                         _ => Ok(Some(Token::Lt)),
                     }
                 }
@@ -445,6 +456,7 @@ impl<'a> Tokenizer<'a> {
                     chars.next(); // consume
                     match chars.peek() {
                         Some('=') => self.consume_and_return(chars, Token::GtEq),
+                        Some('>') => self.consume_and_return(chars, Token::RDisplacement),
                         _ => Ok(Some(Token::Gt)),
                     }
                 }

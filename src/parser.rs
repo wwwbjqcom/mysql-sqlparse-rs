@@ -58,6 +58,7 @@ pub enum IsLateral {
 use crate::ast::Statement::CreateVirtualTable;
 use IsLateral::*;
 use crate::dialect::DBType;
+use crate::ast::Expr::Exists;
 
 
 impl From<TokenizerError> for ParserError {
@@ -501,6 +502,9 @@ impl Parser {
                 self.expect_token(&Token::RParen)?;
                 Ok(expr)
             }
+            Token::Negate => {
+                Ok(Expr::BitwiseNested(Box::new(self.parse_expr()?)))
+            }
             unexpected => self.expected("an expression", unexpected),
         }?;
 
@@ -852,6 +856,9 @@ impl Parser {
             Token::Pipe => Some(BinaryOperator::BitwiseOr),
             Token::Caret => Some(BinaryOperator::BitwiseXor),
             Token::Ampersand => Some(BinaryOperator::BitwiseAnd),
+            Token::Negate => Some(BinaryOperator::BitwiseNegate),
+            Token::LDisplacement => Some(BinaryOperator::BitwiseNegateLDisplacement),
+            Token::RDisplacement => Some(BinaryOperator::BitwiseNegateRDisplacement),
             Token::Div => Some(BinaryOperator::Divide),
             Token::Word(w) => match w.keyword {
                 Keyword::AND => Some(BinaryOperator::And),
@@ -983,7 +990,8 @@ impl Parser {
             Token::Caret => Ok(22),
             Token::Ampersand => Ok(23),
             Token::Plus | Token::Minus => Ok(Self::PLUS_MINUS_PREC),
-            Token::Mult | Token::Div | Token::Mod | Token::StringConcat => Ok(40),
+            Token::Mult | Token::Div | Token::Mod | Token::StringConcat |
+            Token::Negate | Token::LDisplacement | Token::RDisplacement => Ok(40),
             Token::DoubleColon => Ok(50),
             _ => Ok(0),
         }

@@ -18,8 +18,8 @@ use sqlparser::parser::*;
 fn main() {
     // let sql = "insert into tbl_activeuser_trace(minute, count) value(?, ?)";
 
-    let sql = "SELECT * FROM inner_users WHERE status = 0 for update;";
-    // let sql = "update t1 set a = ? where b = ?";
+    let sql = "update t1 set c=c&(~(1<<5)), a = 0 where b = ? and c in (?)";
+    // let sql = "select ~(1&(~(1<<5)))";
     // let sql = "use a";
     //let sql = "";
     let dialect = MySqlDialect {};
