@@ -18,7 +18,7 @@ use sqlparser::parser::*;
 fn main() {
     // let sql = "insert into tbl_activeuser_trace(minute, count) value(?, ?)";
 
-    let sql = "update t1 set c=c&(~(1<<5)), a = 0 where b = ? and c in (?)";
+    let sql = "select @@aa.bb,@@bb.cc";
     // let sql = "select ~(1&(~(1<<5)))";
     // let sql = "use a";
     //let sql = "";

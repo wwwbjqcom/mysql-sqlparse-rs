@@ -22,6 +22,7 @@ use std::str::Chars;
 use super::dialect::keywords::{Keyword, ALL_KEYWORDS, ALL_KEYWORDS_INDEX};
 use super::dialect::Dialect;
 use std::fmt;
+// use serde_json::value::Value::String;
 
 /// SQL Token enumeration
 #[derive(Debug, Clone, PartialEq)]
@@ -527,7 +528,19 @@ impl<'a> Tokenizer<'a> {
                     ch if self.dialect.is_identifier_start(ch) => {
                         chars.next(); // consume the first char
                         let st = self.tokenize_word(ch, chars);
-                        return Ok(format!("{}{}",s, st));
+                        s = format!("{}{}",s, st);
+                        match chars.peek() {
+                            Some(&ch) => match ch {
+                                '.' => {
+                                    chars.next(); // consume the first char
+                                    let st = self.tokenize_word(ch, chars);
+                                    return Ok(format!("{}{}",s,st));
+                                }
+                                _ => return Ok(s)
+                            }
+                            None => return Ok(s)
+                        }
+                        // return Ok(format!("{}{}",s, st));
                     }
                     _ => {
                         return self.tokenizer_error("parser select variable error");
@@ -539,6 +552,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
 
+        return Ok(s)
     }
 
     /// Tokenize an identifier or keyword, after the first char is already consumed.
