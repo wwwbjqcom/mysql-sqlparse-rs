@@ -475,6 +475,16 @@ impl fmt::Display for WindowFrameBound {
     }
 }
 
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum Priority {
+    LOW_PRIORITY,
+    DELAYED,
+    HIGH_PRIORITY
+}
+
 /// A top-level statement (SELECT, INSERT, CREATE, etc.)
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -490,6 +500,10 @@ pub enum Statement {
     },
     /// INSERT
     Insert {
+        ///PRIORITY
+        priority: Option<Priority>,
+        /// IGNORE
+        ignore: bool,
         /// TABLE
         table_name: ObjectName,
         /// COLUMNS
@@ -698,11 +712,22 @@ impl fmt::Display for Statement {
                 write!(f, "{}", body)
             }
             Statement::Insert {
-                table_name,
+                priority, ignore, table_name,
                 columns,
                 source, update,
             } => {
-                write!(f, "INSERT INTO {} ", table_name)?;
+                write!(f, "INSERT ")?;
+                if let Some(pp) = priority{
+                    match pp{
+                        Priority::DELAYED => write!(f, "DELAYED ")?,
+                        Priority::HIGH_PRIORITY => write!(f, "HIGH_PRIORITY ")?,
+                        Priority::LOW_PRIORITY => write!(f, "LOW_PRIORITY ")?
+                    }
+                }
+                if *ignore{
+                    write!(f, "IGNORE ")?;
+                }
+                write!(f, "INTO {} ", table_name)?;
                 if !columns.is_empty() {
                     write!(f, "({}) ", display_comma_separated(columns))?;
                 }

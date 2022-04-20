@@ -2880,6 +2880,20 @@ impl Parser {
 
     /// Parse an INSERT statement
     pub fn parse_insert(&mut self) -> Result<Statement, ParserError> {
+        let mut priority = None;
+        let mut ignore = false;
+        if self.parse_keyword(Keyword::LOW_PRIORITY){
+            priority = Some(Priority::LOW_PRIORITY);
+        }else if self.parse_keyword(Keyword::HIGH_PRIORITY) {
+            priority = Some(Priority::HIGH_PRIORITY);
+        }else if self.parse_keyword(Keyword::DELAYED){
+            priority = Some(Priority::DELAYED);
+        }
+
+        if self.parse_keyword(Keyword::IGNORE){
+            ignore = true;
+        }
+
         if let Err(e) = self.expect_keyword(Keyword::INTO){}
         let table_name = self.parse_object_name()?;
         let columns = self.parse_parenthesized_column_list(Optional)?;
@@ -2890,6 +2904,8 @@ impl Parser {
             None
         };
         Ok(Statement::Insert {
+            priority,
+            ignore,
             table_name,
             columns,
             source,
