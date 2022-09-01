@@ -18,7 +18,7 @@ use sqlparser::parser::*;
 fn main() {
     // let sql = "insert into tbl_activeuser_trace(minute, count) value(?, ?)";
 
-    let sql = "select @@aa.bb,@@bb.cc";
+    let sql = "UPDATE a SET a1 = 1  ,a2 = ?,a3= ? WHERE assigned = 0";
     // let sql = "select ~(1&(~(1<<5)))";
     // let sql = "use a";
     //let sql = "";
@@ -29,4 +29,7 @@ fn main() {
     for i in ast{
         println!("{:?}", i.to_string());
     }
+
+    let a = 8;
+    println!("{}", a % 6);
 }

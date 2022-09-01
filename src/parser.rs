@@ -2922,10 +2922,18 @@ impl Parser {
         } else {
             None
         };
+
+        let (limit, _) = if self.parse_keyword(Keyword::LIMIT) {
+            self.parse_mysql_limit()?
+        } else {
+            (None,None)
+        };
+
         Ok(Statement::Update {
             table_name,
             assignments,
             selection,
+            limit
         })
     }
 
